@@ -27,6 +27,7 @@ export function DispatchPage() {
   const [linkedTasks, setLinkedTasks] = useState<Task[]>([]);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(false);
   const [summary, setSummary] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedSummary, setSavedSummary] = useState(false);
@@ -60,6 +61,15 @@ export function DispatchPage() {
   useEffect(() => {
     fetchDispatch();
   }, [fetchDispatch]);
+
+  useEffect(() => {
+    if (!loading) {
+      setShowSkeleton(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSkeleton(true), 120);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   useEffect(() => {
     if (!confirmComplete) return;
@@ -183,7 +193,7 @@ export function DispatchPage() {
   const doneCount = linkedTasks.filter((t) => t.status === "done").length;
   const progressPercent = linkedTasks.length > 0 ? Math.round((doneCount / linkedTasks.length) * 100) : 0;
 
-  if (loading) {
+  if (loading && showSkeleton) {
     return (
       <div className="mx-auto max-w-5xl p-6">
         <div className="space-y-4">
@@ -193,6 +203,9 @@ export function DispatchPage() {
         </div>
       </div>
     );
+  }
+  if (loading) {
+    return <div className="mx-auto max-w-5xl p-6" />;
   }
 
   return (

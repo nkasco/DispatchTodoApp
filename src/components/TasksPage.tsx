@@ -42,6 +42,7 @@ export function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [flashingId, setFlashingId] = useState<string | null>(null);
+  const hasActiveFilters = Boolean(statusFilter || priorityFilter);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -91,6 +92,17 @@ export function TasksPage() {
     const qs = params.toString();
     router.replace(`/tasks${qs ? "?" + qs : ""}`, { scroll: false });
   }, [statusFilter, priorityFilter, router]);
+
+  // Open modal when arriving from quick add
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setEditingTask(null);
+    setModalOpen(true);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("new");
+    const qs = params.toString();
+    router.replace(`/tasks${qs ? "?" + qs : ""}`, { scroll: false });
+  }, [searchParams, router]);
 
   const sorted = [...tasks].sort((a, b) => {
     if (sortBy === "dueDate") {
@@ -160,14 +172,14 @@ export function TasksPage() {
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
   const statusFilterOptions = [
-    { value: "", label: "All statuses" },
+    { value: "", label: "All", dot: "bg-neutral-400" },
     { value: "open", label: "Open", dot: "bg-blue-500" },
     { value: "in_progress", label: "In Progress", dot: "bg-yellow-500" },
     { value: "done", label: "Done", dot: "bg-green-500" },
   ];
 
   const priorityFilterOptions = [
-    { value: "", label: "All priorities" },
+    { value: "", label: "All", dot: "bg-neutral-400" },
     { value: "high", label: "High", dot: "bg-red-500" },
     { value: "medium", label: "Medium", dot: "bg-yellow-500" },
     { value: "low", label: "Low", dot: "bg-neutral-400" },
@@ -207,32 +219,46 @@ export function TasksPage() {
       </div>
 
       {/* Filters & sort */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-40">
-          <CustomSelect
-            label=""
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          <FilterGroup
+            label="Status"
             value={statusFilter}
-            onChange={(v: string) => setStatusFilter(v as TaskStatus | "")}
             options={statusFilterOptions}
+            onChange={(v) => setStatusFilter(v as TaskStatus | "")}
           />
-        </div>
-
-        <div className="w-40">
-          <CustomSelect
-            label=""
+          <FilterGroup
+            label="Priority"
             value={priorityFilter}
-            onChange={(v: string) => setPriorityFilter(v as TaskPriority | "")}
             options={priorityFilterOptions}
+            onChange={(v) => setPriorityFilter(v as TaskPriority | "")}
           />
-        </div>
-
-        <div className="ml-auto w-36">
-          <CustomSelect
-            label=""
-            value={sortBy}
-            onChange={(v: string) => setSortBy(v as SortField)}
-            options={sortOptions}
-          />
+          <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+                Sort
+              </span>
+              <div className="w-36">
+                <CustomSelect
+                  label=""
+                  value={sortBy}
+                  onChange={(v: string) => setSortBy(v as SortField)}
+                  options={sortOptions}
+                />
+              </div>
+            </div>
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setStatusFilter("");
+                  setPriorityFilter("");
+                }}
+                className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition-all active:scale-95"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -276,7 +302,7 @@ export function TasksPage() {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-sm">
+        <ul className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-sm">
           {sorted.map((task, i) => (
             <TaskRow
               key={task.id}
@@ -292,7 +318,7 @@ export function TasksPage() {
               onDelete={() => handleDelete(task.id)}
             />
           ))}
-        </div>
+        </ul>
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
@@ -333,6 +359,51 @@ const PRIORITY_BADGE: Record<TaskPriority, string> = {
   low: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
 };
 
+type FilterOption = { value: string; label: string; dot?: string };
+
+function FilterGroup({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+        {label}
+      </span>
+      <div className="inline-flex flex-wrap rounded-lg bg-neutral-100 dark:bg-neutral-800 p-1">
+        {options.map((option) => {
+          const active = value === option.value;
+          return (
+            <button
+              key={`${label}-${option.value || "all"}`}
+              type="button"
+              onClick={() => onChange(option.value)}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                active
+                  ? "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+              }`}
+              aria-pressed={active}
+            >
+              {option.dot && (
+                <span className={`h-2 w-2 rounded-full ${option.dot}`} />
+              )}
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TaskRow({
   task,
   index,
@@ -367,23 +438,26 @@ function TaskRow({
         isDeleting ? "animate-slide-out-right overflow-hidden" : ""
       } ${
         isFlashing ? "animate-row-flash" : ""
-      } hover:bg-neutral-50 dark:hover:bg-neutral-800/30`}
+      } hover:bg-neutral-50 dark:hover:bg-neutral-800/30 hover:-translate-y-px hover:shadow-sm`}
       style={{ listStyle: "none" }}
     >
       <button
         onClick={handleStatusClick}
         title={`Status: ${STATUS_STYLES[task.status].label} (click to cycle)`}
-        className="flex-shrink-0 relative"
+        className="flex-shrink-0 inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600 hover:text-neutral-800 dark:hover:text-neutral-100 transition-all active:scale-95"
       >
-        <span
-          className={`block h-3 w-3 rounded-full ${STATUS_STYLES[task.status].dot} transition-colors`}
-        />
-        {ringKey > 0 && (
+        <span className="relative flex h-2.5 w-2.5">
           <span
-            key={ringKey}
-            className={`absolute inset-0 rounded-full animate-status-ring ${STATUS_STYLES[task.status].ring}`}
+            className={`absolute inset-0 rounded-full ${STATUS_STYLES[task.status].dot} transition-colors`}
           />
-        )}
+          {ringKey > 0 && (
+            <span
+              key={ringKey}
+              className={`absolute inset-0 rounded-full animate-status-ring ${STATUS_STYLES[task.status].ring}`}
+            />
+          )}
+        </span>
+        <span>{STATUS_STYLES[task.status].label}</span>
       </button>
 
       <div className="flex-1 min-w-0">
@@ -399,27 +473,30 @@ function TaskRow({
         )}
       </div>
 
-      <span
-        title={`Priority: ${task.priority}`}
-        className={`text-xs font-medium px-2 py-0.5 rounded-full ${PRIORITY_BADGE[task.priority]}`}
-      >
-        {task.priority}
-      </span>
-
-      {task.dueDate && (
-        <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
-          {task.dueDate}
+      <div className="flex items-center gap-2">
+        <span
+          title={`Priority: ${task.priority}`}
+          className={`text-xs font-medium px-2 py-0.5 rounded-full ${PRIORITY_BADGE[task.priority]}`}
+        >
+          {task.priority}
         </span>
-      )}
 
-      {/* Action buttons - visible on hover */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {task.dueDate && (
+          <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
+            {task.dueDate}
+          </span>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onEdit}
-          className="rounded-md p-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-all"
+          className="rounded-md px-2 py-1 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-all inline-flex items-center gap-1.5"
           title="Edit task"
         >
           <IconPencil className="w-3.5 h-3.5" />
+          Edit
         </button>
         <button
           onClick={onDelete}

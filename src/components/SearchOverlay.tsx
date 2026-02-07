@@ -25,7 +25,13 @@ export function SearchOverlay({ onClose }: SearchOverlayProps) {
 
   // Focus input on mount
   useEffect(() => {
-    inputRef.current?.focus();
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    requestAnimationFrame(() => {
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+    });
   }, []);
 
   // Close on Escape

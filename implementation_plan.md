@@ -157,5 +157,5 @@ Targeted UX fixes and navigation balance across dashboard, tasks, and sidebar.
 - [ ] **9.6** Eliminate the slight flicker when the Dashboard and Dispatch pages load.
 - [ ] **9.7** Add a User Profile page and link to it from the sidebar.
 - [ ] **9.8** Move the user profile section to the bottom of the sidebar.
-- [ ] **9.9** Introduce four Quick Add buttons in the main menu of the sidebar, with the 4th button reserved for Search.
+- [ ] **9.9** Introduce four Quick Add buttons in the top on the main menu of the sidebar, with the 4th button reserved for Search.
 - [ ] **9.10** When the search textbox appears, prevent the selection highlight from showing so it does not disrupt the UI aesthetic.

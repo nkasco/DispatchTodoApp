@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api, type Note } from "@/lib/client";
 import { Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/ToastProvider";
@@ -9,6 +9,7 @@ import { IconPlus, IconTrash } from "@/components/icons";
 
 export function NotesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,15 @@ export function NotesPage() {
     window.addEventListener("shortcut:new-note", handleCreate);
     return () => window.removeEventListener("shortcut:new-note", handleCreate);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("new");
+    const qs = params.toString();
+    router.replace(`/notes${qs ? "?" + qs : ""}`, { scroll: false });
+    void handleCreate();
+  }, [searchParams, router]);
 
   async function handleCreate() {
     try {

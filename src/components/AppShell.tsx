@@ -37,7 +37,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onSearchOpen={() => setSearchOpen(true)}
         onShortcutHelp={() => setShortcutHelpOpen(true)}
       />
-      <Sidebar onSearchOpen={() => setSearchOpen(true)} />
+      <Sidebar
+        onSearchOpen={() => setSearchOpen(true)}
+        onShortcutHelp={() => setShortcutHelpOpen(true)}
+      />
       <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
         {children}
       </main>

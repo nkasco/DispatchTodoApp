@@ -15,15 +15,42 @@ export function Dashboard({ userName }: { userName: string }) {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [dispatchCount, setDispatchCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.tasks.list(), api.notes.list()])
-      .then(([t, n]) => {
+    if (!loading) {
+      setShowSkeleton(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSkeleton(true), 120);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api.tasks.list(),
+      api.notes.list(),
+      api.dispatches.list({ page: 1, limit: 1 }),
+    ])
+      .then(([t, n, d]) => {
+        if (!active) return;
         setTasks(Array.isArray(t) ? t : t.data);
         setNotes(Array.isArray(n) ? n : n.data);
+        if (Array.isArray(d)) {
+          setDispatchCount(d.length);
+        } else {
+          setDispatchCount(d.pagination.total);
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const openTasks = tasks.filter((t) => t.status === "open");
@@ -77,7 +104,7 @@ export function Dashboard({ userName }: { userName: string }) {
   const completedToday = doneTasks.length;
   const progressPercent = totalTasks > 0 ? Math.round((completedToday / totalTasks) * 100) : 0;
 
-  if (loading) {
+  if (loading && showSkeleton) {
     return (
       <div className="mx-auto max-w-5xl p-6">
         <div className="space-y-6">
@@ -110,6 +137,9 @@ export function Dashboard({ userName }: { userName: string }) {
         </div>
       </div>
     );
+  }
+  if (loading) {
+    return <div className="mx-auto max-w-5xl p-6" />;
   }
 
   return (
@@ -155,9 +185,9 @@ export function Dashboard({ userName }: { userName: string }) {
 
       {/* Stats row with progress ring */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-        <StatCard label="Open" count={openTasks.length} color="blue" href="/tasks?status=open" />
-        <StatCard label="In Progress" count={inProgressTasks.length} color="yellow" href="/tasks?status=in_progress" />
-        <StatCard label="Done" count={doneTasks.length} color="green" href="/tasks?status=done" />
+        <StatCard label="Open Tasks" count={openTasks.length} color="blue" href="/tasks?status=open" />
+        <StatCard label="Notes" count={notes.length} color="purple" href="/notes" />
+        <StatCard label="Dispatches" count={dispatchCount} color="green" href="/dispatch" />
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex items-center gap-4">
           <ProgressRing percent={progressPercent} />
           <div>
@@ -237,7 +267,7 @@ export function Dashboard({ userName }: { userName: string }) {
           </div>
         ) : (
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm">
-            <ul className="border-l border-neutral-200 dark:border-neutral-800/70 pl-4 space-y-3">
+            <ul className="border-l border-neutral-200 dark:border-neutral-800/70 pl-6 space-y-4">
               {recentActivity.map((item) => {
                 const dotClass =
                   item.type === "note"
@@ -258,7 +288,7 @@ export function Dashboard({ userName }: { userName: string }) {
                 return (
                   <li key={item.id} className="relative">
                     <span
-                      className={`absolute -left-[9px] top-1.5 h-2.5 w-2.5 rounded-full ${dotClass}`}
+                      className={`absolute -left-[12px] top-1.5 h-2.5 w-2.5 rounded-full ${dotClass}`}
                     />
                     <p className="text-sm text-neutral-700 dark:text-neutral-300">
                       <span className="font-medium">{label}:</span>{" "}
@@ -337,13 +367,14 @@ function StatCard({
 }: {
   label: string;
   count: number;
-  color: "blue" | "yellow" | "green";
+  color: "blue" | "yellow" | "green" | "purple";
   href: string;
 }) {
   const colors = {
     blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
     yellow: "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
     green: "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+    purple: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
   };
   return (
     <Link
