@@ -1,35 +1,83 @@
-# Dispatch
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&height=240&color=0:0a1020,35:12244a,70:1d4ed8,100:7c3aed&text=Dispatch&fontSize=70&fontColor=ffffff&fontAlignY=40&desc=Local-first%20productivity%20command%20center&descSize=18&descAlignY=62&animation=fadeIn" alt="Dispatch banner" />
+</p>
 
-Dispatch is a local-first, single-user task and note hub built with Next.js, SQLite, and NextAuth. It runs entirely on `localhost` and keeps your data on disk.
+<h1 align="center">Dispatch</h1>
+<p align="center"><strong>A polished local-first workspace for tasks, projects, notes, and daily planning.</strong></p>
 
-## Features
-- Tasks with status, priority, due dates, and projects
-- Projects with stats and task rollups
-- Notes with Markdown preview and export
-- Daily dispatch view for planning and rollovers
-- Global search across tasks, notes, and dispatches
-- Dark mode, keyboard shortcuts, and polished UI motion
+<p align="center">
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-0f172a?style=for-the-badge&logo=react" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-1d4ed8?style=for-the-badge&logo=typescript&logoColor=white" />
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-Local-0ea5e9?style=for-the-badge&logo=sqlite" />
+  <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-v4-0891b2?style=for-the-badge&logo=tailwindcss&logoColor=white" />
+</p>
 
-## Tech Stack
-- Next.js App Router, React, TypeScript
-- SQLite via `better-sqlite3` + Drizzle ORM
-- NextAuth (GitHub OAuth + dev credentials)
-- Tailwind CSS v4
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#feature-tour">Feature Tour</a> •
+  <a href="#tech-stack">Tech Stack</a> •
+  <a href="#scripts">Scripts</a>
+</p>
 
-## Getting Started
+---
 
-1. Install dependencies:
+## Sneak Peek
+
+<p align="center">
+  <img src="./docs/assets/dispatch-dashboard.png" alt="Dispatch dashboard screenshot" />
+</p>
+
+<p align="center"><em>Clean dark UI, fast keyboard flow, project rollups, deadline focus, and daily dispatch planning in one screen.</em></p>
+
+## Why It Feels Great
+
+| | |
+| --- | --- |
+| **Local-first by default** | Your data stays on your machine in SQLite (`dispatch.db`). |
+| **One workspace for everything** | Tasks, projects, notes, and dispatches stay connected. |
+| **Keyboard-friendly UX** | Fast actions, global search, and shortcut support keep flow uninterrupted. |
+| **Built for real execution** | Deadline focus, progress rollups, and upcoming work are always visible. |
+
+## Feature Tour
+
+- `Dashboard`: instant visibility into active tasks, notes, dispatches, deadlines, and project activity.
+- `Tasks`: status + priority + due dates + project links.
+- `Projects`: progress rollups and scoped task lists.
+- `Notes`: markdown editing, preview, and export.
+- `Dispatch`: daily planning surface with rollover support.
+- `Search`: global search across tasks, notes, and dispatch records.
+- `Recycle Bin`: restore or permanently remove archived items.
+- `Auth`: GitHub OAuth and local development credentials.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    UI[Next.js App Router + React] --> API[Route Handlers]
+    API --> AUTH[NextAuth]
+    API --> ORM[Drizzle ORM]
+    ORM --> DB[(SQLite on disk)]
+```
+
+## Quick Start
+
+### 1. Install
+
 ```bash
 npm install
 ```
 
-2. Create `.env.local` (gitignored) with:
+### 2. Configure env
+
+Create `.env.local`:
+
 ```bash
 # Required for NextAuth
 AUTH_SECRET=your_random_secret
 NEXTAUTH_URL=http://localhost:3000
 
-# GitHub OAuth (optional but recommended)
+# GitHub OAuth (optional)
 AUTH_GITHUB_ID=your_github_oauth_client_id
 AUTH_GITHUB_SECRET=your_github_oauth_client_secret
 
@@ -37,31 +85,49 @@ AUTH_GITHUB_SECRET=your_github_oauth_client_secret
 DATABASE_URL=./dispatch.db
 ```
 
-3. Apply migrations (first run or after schema changes):
+### 3. Migrate database
+
 ```bash
 npm run db:migrate
 ```
 
-4. Start the dev server:
+### 4. Run app
+
 ```bash
 npm run dev
 ```
 
-### Dev Login (optional)
-In development, a credentials-based login is available.
+Open `http://localhost:3000`.
 
-- Seeded credentials account: `test@dispatch.local` / `test`
-- You can also register a new local account from the login page.
+### Dev Login (Optional)
 
-## Useful Scripts
-- `npm run dev` — start the dev server
-- `npm run build` — build for production
-- `npm run start` — start the production server
-- `npm run db:generate` — generate migrations
-- `npm run db:migrate` — apply migrations
-- `npm run db:seed` — seed sample data
-- `npm test` — run tests
+- Seeded account: `test@dispatch.local` / `test`
+- Or create a local account from the login page
 
-## Notes
-- This app is designed to run locally on your machine.
-- Data is stored in SQLite (default: `./dispatch.db`).
+## Tech Stack
+
+- Next.js App Router
+- React 19 + TypeScript
+- NextAuth v5
+- Drizzle ORM + better-sqlite3
+- Tailwind CSS v4
+- Vitest
+
+## Scripts
+
+- `npm run dev` - Start dev server
+- `npm run build` - Build production bundle
+- `npm run start` - Start production server
+- `npm run lint` - Run lint checks
+- `npm run db:generate` - Generate Drizzle migrations
+- `npm run db:migrate` - Apply migrations
+- `npm run db:push` - Push schema directly
+- `npm run db:studio` - Open Drizzle Studio
+- `npm run db:seed` - Seed sample data
+- `npm test` - Run test suite
+
+---
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&height=120&section=footer&color=0:0a1020,35:12244a,70:1d4ed8,100:7c3aed" alt="footer" />
+</p>
