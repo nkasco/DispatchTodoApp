@@ -1,0 +1,4 @@
+# Copilot Instructions
+
+Read `spec.md` in the project root before making changes. It contains the full project specification.
+Read `agents.md` in the project root for conventions and key files.

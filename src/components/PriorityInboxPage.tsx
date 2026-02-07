@@ -163,6 +163,7 @@ export function PriorityInboxPage() {
 
   async function handleDoneToggle(task: Task) {
     const next: TaskStatus = task.status === "done" ? "open" : "done";
+    const previousStatus = task.status;
 
     if (completingIds.includes(task.id)) {
       return;
@@ -181,11 +182,27 @@ export function PriorityInboxPage() {
 
     try {
       await api.tasks.update(task.id, { status: next });
+      if (next === "done") {
+        toast.undo(`"${task.title}" completed`, async () => {
+          clearCompletionState(task.id);
+          setTasks((prev) =>
+            prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
+          );
+          try {
+            await api.tasks.update(task.id, { status: previousStatus });
+          } catch {
+            setTasks((prev) =>
+              prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+            );
+            toast.error("Failed to undo");
+          }
+        });
+      }
     } catch {
       clearCompletionState(task.id);
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === task.id ? { ...t, status: task.status } : t,
+          t.id === task.id ? { ...t, status: previousStatus } : t,
         ),
       );
       toast.error("Failed to update task status");

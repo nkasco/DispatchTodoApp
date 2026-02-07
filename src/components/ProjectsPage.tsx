@@ -251,6 +251,7 @@ export function ProjectsPage() {
 
   async function handleTaskDoneToggle(task: Task) {
     const nextStatus: TaskStatus = task.status === "done" ? "open" : "done";
+    const previousStatus = task.status;
     const shouldAnimateDismiss = nextStatus === "done" && !showCompleted;
 
     if (completingTaskIds.includes(task.id)) {
@@ -271,10 +272,27 @@ export function ProjectsPage() {
     try {
       await api.tasks.update(task.id, { status: nextStatus });
       await refreshProjects();
+      if (nextStatus === "done") {
+        toast.undo(`"${task.title}" completed`, async () => {
+          clearCompletionState(task.id);
+          setTasks((prev) =>
+            prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
+          );
+          try {
+            await api.tasks.update(task.id, { status: previousStatus });
+            await refreshProjects();
+          } catch {
+            setTasks((prev) =>
+              prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+            );
+            toast.error("Failed to undo");
+          }
+        });
+      }
     } catch {
       clearCompletionState(task.id);
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)),
+        prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
       );
       toast.error("Failed to update task status");
     }

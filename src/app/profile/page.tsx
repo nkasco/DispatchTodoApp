@@ -55,7 +55,11 @@ export default async function Profile() {
               className="w-16 h-16 rounded-full object-cover"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-neutral-200 dark:bg-neutral-800" />
+            <div className="w-16 h-16 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
+              <svg className="w-9 h-9 text-neutral-400 dark:text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.25a7.5 7.5 0 0 1 15 0" />
+              </svg>
+            </div>
           )}
           <div>
             <p className="text-lg font-semibold dark:text-white">

@@ -526,7 +526,11 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
                         className="w-5 h-5 rounded-full flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-5 h-5 rounded-full bg-neutral-700 flex-shrink-0" />
+                      <div className="w-5 h-5 rounded-full bg-neutral-700 flex-shrink-0 flex items-center justify-center">
+                        <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.25a7.5 7.5 0 0 1 15 0" />
+                        </svg>
+                      </div>
                     )}
                     <span
                       className={`text-sm truncate whitespace-nowrap transition-all duration-300 ${
