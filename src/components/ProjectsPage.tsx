@@ -36,6 +36,7 @@ export function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectWithStats | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -44,6 +45,13 @@ export function ProjectsPage() {
   const selectedProject = useMemo(
     () => projects.find((p) => p.id === selectedId) ?? null,
     [projects, selectedId],
+  );
+  const visibleProjects = useMemo(
+    () =>
+      showCompletedProjects
+        ? projects
+        : projects.filter((project) => project.status !== "completed"),
+    [projects, showCompletedProjects],
   );
   const visibleTasks = useMemo(
     () => (showCompleted ? tasks : tasks.filter((task) => task.status !== "done")),
@@ -68,10 +76,17 @@ export function ProjectsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedId && projects.length > 0) {
-      router.replace(`/projects?projectId=${projects[0].id}`, { scroll: false });
+    if (!selectedId && visibleProjects.length > 0) {
+      router.replace(`/projects?projectId=${visibleProjects[0].id}`, { scroll: false });
+      return;
     }
-  }, [selectedId, projects, router]);
+    if (!showCompletedProjects && selectedProject?.status === "completed") {
+      const nextProject = projects.find((project) => project.status !== "completed");
+      if (nextProject) {
+        router.replace(`/projects?projectId=${nextProject.id}`, { scroll: false });
+      }
+    }
+  }, [selectedId, projects, router, visibleProjects, showCompletedProjects, selectedProject]);
 
   useEffect(() => {
     if (searchParams.get("new") !== "1") return;
@@ -382,7 +397,42 @@ export function ProjectsPage() {
           </div>
 
           <div className="space-y-3">
-            {projects.map((project) => {
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+                Projects
+              </p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showCompletedProjects}
+                onClick={() => setShowCompletedProjects((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition-all active:scale-95"
+              >
+                <span>Show Completed</span>
+                <span
+                  className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                    showCompletedProjects ? "bg-blue-600" : "bg-neutral-300 dark:bg-neutral-700"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${
+                      showCompletedProjects ? "translate-x-3.5" : "translate-x-0.5"
+                    }`}
+                  />
+                </span>
+              </button>
+            </div>
+            {visibleProjects.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-6 text-center">
+                <IconCheckCircle className="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
+                <p className="text-sm text-neutral-400 dark:text-neutral-500">
+                  {projects.length === 0
+                    ? "No projects yet"
+                    : "All projects are completed. Toggle Show Completed to view them."}
+                </p>
+              </div>
+            ) : (
+              visibleProjects.map((project) => {
               const active = project.id === selectedId;
               const color = PROJECT_COLORS[project.color] ?? PROJECT_COLORS.blue;
               return (
@@ -418,7 +468,8 @@ export function ProjectsPage() {
                   </div>
                 </button>
               );
-            })}
+            })
+            )}
           </div>
         </div>
       )}

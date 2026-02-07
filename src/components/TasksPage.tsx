@@ -278,32 +278,69 @@ export function TasksPage() {
 
       {/* Filters & sort */}
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-[auto_auto_auto_1fr] items-center">
-          <FilterGroup
-            label="Status"
-            value={statusFilter}
-            options={statusFilterOptions}
-            onChange={(v) => setStatusFilter(v as TaskStatus | "")}
-          />
-          <FilterGroup
-            label="Priority"
-            value={priorityFilter}
-            options={priorityFilterOptions}
-            onChange={(v) => setPriorityFilter(v as TaskPriority | "")}
-          />
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-              Project
-            </span>
-            <div className="w-44">
-              <CustomSelect
-                label=""
-                value={projectFilter}
-                onChange={(v: string) => setProjectFilter(v)}
-                options={projectOptions}
-              />
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <FilterGroup
+              label="Status"
+              value={statusFilter}
+              options={statusFilterOptions}
+              onChange={(v) => setStatusFilter(v as TaskStatus | "")}
+            />
+            <FilterGroup
+              label="Priority"
+              value={priorityFilter}
+              options={priorityFilterOptions}
+              onChange={(v) => setPriorityFilter(v as TaskPriority | "")}
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+                Project
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {projectOptions.map((option) => {
+                  const active = projectFilter === option.value;
+                  return (
+                    <button
+                      key={`project-${option.value || "all"}`}
+                      type="button"
+                      onClick={() => setProjectFilter(option.value)}
+                      title={option.label}
+                      aria-pressed={active}
+                      className={`group inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-all ${
+                        active
+                          ? "border-neutral-300 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 shadow-sm"
+                          : "border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600"
+                      }`}
+                    >
+                      <span className={`h-2.5 w-2.5 rounded-full ${option.dot ?? "bg-neutral-400"}`} />
+                      <span
+                        className={`whitespace-nowrap overflow-hidden transition-[max-width,opacity,transform] duration-200 ease-out ${
+                          active
+                            ? "max-w-[12rem] opacity-100 translate-x-0"
+                            : "max-w-0 opacity-0 -translate-x-1 group-hover:max-w-[12rem] group-hover:opacity-100 group-hover:translate-x-0"
+                        }`}
+                      >
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setStatusFilter("");
+                  setPriorityFilter("");
+                  setProjectFilter("");
+                }}
+                className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition-all active:scale-95"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
+
           <div className="flex flex-wrap items-center gap-3 md:justify-end">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
@@ -338,18 +375,6 @@ export function TasksPage() {
                 />
               </span>
             </button>
-            {hasActiveFilters && (
-              <button
-                onClick={() => {
-                  setStatusFilter("");
-                  setPriorityFilter("");
-                  setProjectFilter("");
-                }}
-                className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition-all active:scale-95"
-              >
-                Clear filters
-              </button>
-            )}
           </div>
         </div>
       </div>
