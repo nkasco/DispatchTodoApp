@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, type ProjectWithStats, type Task, type TaskStatus } from "@/lib/client";
 import { ProjectModal } from "@/components/ProjectModal";
+import { TaskModal } from "@/components/TaskModal";
 import { useToast } from "@/components/ToastProvider";
 import {
   IconPlus,
@@ -51,6 +52,9 @@ export function ProjectsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectWithStats | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const selectedId = searchParams.get("projectId") || "";
   const selectedProject = useMemo(
@@ -122,6 +126,20 @@ export function ProjectsPage() {
     document.addEventListener("mousedown", handleCancel);
     return () => document.removeEventListener("mousedown", handleCancel);
   }, [deletingId]);
+
+  useEffect(() => {
+    if (!deletingTaskId) return;
+    function handleCancel(event: MouseEvent) {
+      const target = event.target as Element | null;
+      const deleteButton = target?.closest("[data-task-delete]");
+      if (deleteButton?.getAttribute("data-task-delete") === deletingTaskId) {
+        return;
+      }
+      setDeletingTaskId(null);
+    }
+    document.addEventListener("mousedown", handleCancel);
+    return () => document.removeEventListener("mousedown", handleCancel);
+  }, [deletingTaskId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -212,6 +230,42 @@ export function ProjectsPage() {
       );
       toast.error("Failed to update task status");
     }
+  }
+
+  function handleTaskEdit(taskId: string) {
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) {
+      setEditingTask(task);
+      setTaskModalOpen(true);
+    }
+  }
+
+  async function handleTaskDelete(taskId: string) {
+    if (deletingTaskId === taskId) {
+      try {
+        await api.tasks.delete(taskId);
+        toast.success("Task deleted");
+        setDeletingTaskId(null);
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        await refreshProjects();
+      } catch {
+        toast.error("Failed to delete task");
+      }
+      return;
+    }
+    setDeletingTaskId(taskId);
+    setTimeout(() => setDeletingTaskId(null), 2500);
+  }
+
+  async function handleTaskSaved() {
+    setTaskModalOpen(false);
+    setEditingTask(null);
+    toast.success("Task saved");
+    if (selectedId) {
+      const data = await api.projects.getTasks(selectedId);
+      setTasks(Array.isArray(data) ? data : data.data);
+    }
+    await refreshProjects();
   }
 
   if (loading) {
@@ -334,7 +388,10 @@ export function ProjectsPage() {
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
-                        onClick={() => router.push(`/tasks?new=1&projectId=${selectedProject.id}`)}
+                        onClick={() => {
+                          setEditingTask(null);
+                          setTaskModalOpen(true);
+                        }}
                         className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 active:scale-95 transition-all inline-flex items-center gap-1.5"
                       >
                         <IconPlus className="w-3.5 h-3.5" />
@@ -433,6 +490,29 @@ export function ProjectsPage() {
                                 {task.dueDate}
                               </span>
                             )}
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleTaskEdit(task.id)}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all active:scale-95"
+                                title="Edit task"
+                              >
+                                <IconPencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleTaskDelete(task.id)}
+                                data-task-delete={task.id}
+                                className={`p-1.5 rounded-lg transition-all active:scale-95 ${
+                                  deletingTaskId === task.id
+                                    ? "bg-red-600 text-white hover:bg-red-500"
+                                    : "text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                }`}
+                                title={deletingTaskId === task.id ? "Click again to confirm" : "Delete task"}
+                              >
+                                <IconTrash className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -535,6 +615,18 @@ export function ProjectsPage() {
             setEditingProject(null);
           }}
           onSaved={handleSaved}
+        />
+      )}
+
+      {taskModalOpen && (
+        <TaskModal
+          task={editingTask}
+          defaultProjectId={selectedProject?.id}
+          onClose={() => {
+            setTaskModalOpen(false);
+            setEditingTask(null);
+          }}
+          onSaved={handleTaskSaved}
         />
       )}
     </div>
