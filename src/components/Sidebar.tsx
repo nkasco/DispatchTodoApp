@@ -455,48 +455,6 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
 
           {(sectionsOpen.account || collapsed) && (
             <ul className="space-y-0.5">
-              {/* Profile */}
-              <li>
-                <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : ""}`}>
-                  <Link
-                    href="/profile"
-                    title={collapsed ? "Profile" : undefined}
-                    className={`flex items-center rounded-lg py-2 transition-all ${
-                      profileActive
-                        ? "bg-neutral-800/60 text-white"
-                        : "text-neutral-300 hover:bg-neutral-800/40 hover:text-neutral-200"
-                    } ${collapsed ? "justify-center" : "flex-1 gap-3 px-3"}`}
-                  >
-                    {session.user.image ? (
-                      <img
-                        src={session.user.image}
-                        alt=""
-                        className="w-5 h-5 rounded-full flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-neutral-700 flex-shrink-0" />
-                    )}
-                    <span
-                      className={`text-sm truncate whitespace-nowrap transition-all duration-300 ${
-                        collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
-                      }`}
-                    >
-                      {session.user.name || session.user.email}
-                    </span>
-                  </Link>
-                  {!collapsed && (
-                    <button
-                      onClick={() => signOut({ callbackUrl: "/login" })}
-                      title="Sign out"
-                      aria-label="Sign out"
-                      className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-700/70 bg-neutral-900/50 text-neutral-400 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:bg-neutral-800/80 hover:text-white transition-all active:scale-[0.97]"
-                    >
-                      <IconSignOut className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </li>
-
               {/* Theme toggle */}
               <li>
                 <button
@@ -539,6 +497,48 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
                     Shortcuts
                   </span>
                 </button>
+              </li>
+
+              {/* Profile */}
+              <li>
+                <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : ""}`}>
+                  <Link
+                    href="/profile"
+                    title={collapsed ? "Profile" : undefined}
+                    className={`flex items-center rounded-lg py-2 transition-all ${
+                      profileActive
+                        ? "bg-neutral-800/60 text-white"
+                        : "text-neutral-300 hover:bg-neutral-800/40 hover:text-neutral-200"
+                    } ${collapsed ? "justify-center" : "flex-1 gap-3 px-3"}`}
+                  >
+                    {session.user.image ? (
+                      <img
+                        src={session.user.image}
+                        alt=""
+                        className="w-5 h-5 rounded-full flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-neutral-700 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`text-sm truncate whitespace-nowrap transition-all duration-300 ${
+                        collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
+                      }`}
+                    >
+                      {session.user.name || session.user.email}
+                    </span>
+                  </Link>
+                  {!collapsed && (
+                    <button
+                      onClick={() => signOut({ callbackUrl: "/login" })}
+                      title="Sign out"
+                      aria-label="Sign out"
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-700/70 bg-neutral-900/50 text-neutral-400 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:bg-neutral-800/80 hover:text-white transition-all active:scale-[0.97]"
+                    >
+                      <IconSignOut className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </li>
             </ul>
           )}
