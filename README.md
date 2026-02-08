@@ -14,16 +14,12 @@
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#docker-setup-no-npm-recommended">Docker Setup</a> •
-  <a href="#local-development-prerequisites">Local Dev Prerequisites</a> •
+  <a href="#local-development-prerequisites">Local Dev</a> •
   <a href="#feature-tour">Feature Tour</a> •
-  <a href="#tech-stack">Tech Stack</a> •
-  <a href="#scripts">Scripts</a>
+  <a href="#tech-stack">Tech Stack</a>
 </p>
 
 ---
-
-## Sneak Peek
 
 <p align="center">
   <img src="./docs/assets/dispatch-dashboard-latest.png" alt="Dispatch dashboard screenshot" />
@@ -63,7 +59,7 @@ flowchart LR
 
 ## Quick Start
 
-### Docker Setup (No npm, Recommended)
+### Docker Setup (Recommended)
 
 Dispatch includes production launchers that create/update `.env.local` and run Docker Compose without npm.
 
@@ -77,27 +73,7 @@ Use one of the following:
 ./dispatch.sh setup
 ```
 
-### Interactive Setup (Developer Alternative)
-
-Dispatch includes an interactive setup wizard that creates `.env.local` and can start Dispatch via Docker Compose.
-
-Use one of the following:
-
-```powershell
-npm run setup
-```
-
-```powershell
-.\dispatch-dev.ps1 setup
-```
-
-```bash
-./dispatch-dev.sh setup
-```
-
-If `.env.local` already exists, the setup wizard asks before overwriting anything.
-
-## Local Development Prerequisites
+## Local Development - Prerequisites
 
 Use this section only if you are running Dispatch locally with Node.js (`npm run dev`, `npm run build`, `npm run start`).
 
@@ -160,20 +136,6 @@ Open `http://localhost:3000`.
 - Drizzle ORM + better-sqlite3
 - Tailwind CSS v4
 - Vitest
-
-## Scripts
-
-- `npm run setup` - Launch interactive setup wizard (`scripts/setup.ts`)
-- `npm run dev` - Start dev server
-- `npm run build` - Build production bundle
-- `npm run start` - Start production server
-- `npm run lint` - Run lint checks
-- `npm run db:generate` - Generate Drizzle migrations
-- `npm run db:migrate` - Apply migrations
-- `npm run db:push` - Push schema directly
-- `npm run db:studio` - Open Drizzle Studio
-- `npm run db:seed` - Seed sample data
-- `npm test` - Run test suite
 
 ---
 
