@@ -14,9 +14,8 @@
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#local-development-prerequisites">Local Dev</a> •
   <a href="#feature-tour">Feature Tour</a> •
-  <a href="#tech-stack">Tech Stack</a>
+  <a href="#local-development-prerequisites">Local Dev</a>
 </p>
 
 ---
