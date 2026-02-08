@@ -29,15 +29,16 @@ function Write-RedLn { param([string]$Text) Write-Host $Text -ForegroundColor Re
 
 function Show-Logo {
     $logo = @(
-        "  ____  ___ ____  ____   _  _____ ____ _   _ "
-        " |  _ \\|_ _/ ___||  _ \\ / \\|_   _/ ___| | | |"
-        " | | | || |\\___ \\| |_) / _ \\ | || |   | |_| |"
-        " | |_| || | ___) |  __/ ___ \\| || |___|  _  |"
-        " |____/|___|____/|_| /_/   \\_\\_| \\____|_| |_|"
+        @{ Color = "Cyan";     Text = "  ██████╗ ██╗███████╗██████╗  █████╗ ████████╗ ██████╗██╗  ██╗" }
+        @{ Color = "Cyan";     Text = "  ██╔══██╗██║██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██╔════╝██║  ██║" }
+        @{ Color = "DarkCyan"; Text = "  ██║  ██║██║███████╗██████╔╝███████║   ██║   ██║     ███████║" }
+        @{ Color = "Blue";     Text = "  ██║  ██║██║╚════██║██╔═══╝ ██╔══██║   ██║   ██║     ██╔══██║" }
+        @{ Color = "Blue";     Text = "  ██████╔╝██║███████║██║     ██║  ██║   ██║   ╚██████╗██║  ██║" }
+        @{ Color = "DarkBlue"; Text = "  ╚═════╝ ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝" }
     )
     Write-Host ""
     foreach ($line in $logo) {
-        Write-Host $line -ForegroundColor Cyan
+        Write-Host $line.Text -ForegroundColor $line.Color
     }
     Write-Host ""
     Write-DimLn "  v$Version - Docker production launcher"
