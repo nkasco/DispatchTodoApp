@@ -71,12 +71,10 @@ Use one of the following:
 
 ```powershell
 .\dispatch.ps1 setup
-.\dispatch.ps1 start
 ```
 
 ```bash
 ./dispatch.sh setup
-./dispatch.sh start
 ```
 
 ### Interactive Setup (Developer Alternative)
