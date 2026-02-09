@@ -202,5 +202,5 @@ Address cross-page UX inconsistencies, strengthen Dispatch as a daily workflow/j
 - [ ] **12.8** On Dispatch save, auto-create or update a same-day linked Note entry so the Daily Summary is retained in Notes history. The note name should have the date in it, "Daily Dispatch - <date>" format, this format will also make it easier to know if it should create a new note or update an existing one.
 - [ ] **12.9** Allow completion of linked tasks directly from the Dispatch page with existing optimistic update + undo behavior parity. UI elements should allow the checkboxes too.
 - [ ] **12.10** Add app branding assets: favicon (lightning bolt candidate) and initial logo treatment for app identity.
-- [ ] **12.11** Validate and improve responsive behavior for iPhone-sized screens, iPad/tablet breakpoints, and smaller desktop windows.
-/usa
+- [ ] **12.11** There is a subtle flicker when loading any page because of the way it queries the data via API. Any way to make this smoother? Maybe the page loads but the areas that are loading have loading bars and animations to show the content once it's pulled back
+- [ ] **12.12** Validate and improve responsive behavior for iPhone-sized screens, iPad/tablet breakpoints, and smaller desktop windows.
