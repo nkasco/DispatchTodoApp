@@ -38,6 +38,9 @@ async function resolveApiKeySession(req: Request): Promise<Session | null> {
       name: users.name,
       email: users.email,
       image: users.image,
+      role: users.role,
+      frozenAt: users.frozenAt,
+      showAdminQuickAccess: users.showAdminQuickAccess,
     })
     .from(apiKeys)
     .innerJoin(users, eq(apiKeys.userId, users.id))
@@ -57,6 +60,9 @@ async function resolveApiKeySession(req: Request): Promise<Session | null> {
       name: result.name,
       email: result.email,
       image: result.image,
+      role: (result.role as "member" | "admin" | null | undefined) ?? "member",
+      isFrozen: Boolean(result.frozenAt),
+      showAdminQuickAccess: result.showAdminQuickAccess ?? true,
     },
     expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   };
@@ -76,22 +82,42 @@ export function withAuth<TCtx = unknown>(
 
     const session = await auth();
     if (session?.user) {
+      session.user.role = session.user.role ?? "member";
+      session.user.isFrozen = Boolean(session.user.isFrozen);
+      session.user.showAdminQuickAccess = session.user.showAdminQuickAccess ?? true;
+      if (session.user.isFrozen) {
+        return errorResponse("Account is frozen", 403);
+      }
       return handler(req, session, ctx);
     }
 
     if (allowApiKey) {
       const apiKeySession = await resolveApiKeySession(req);
       if (apiKeySession?.user) {
+        apiKeySession.user.role = apiKeySession.user.role ?? "member";
+        apiKeySession.user.isFrozen = Boolean(apiKeySession.user.isFrozen);
+        apiKeySession.user.showAdminQuickAccess = apiKeySession.user.showAdminQuickAccess ?? true;
+        if (apiKeySession.user.isFrozen) {
+          return errorResponse("Account is frozen", 403);
+        }
         return handler(req, apiKeySession, ctx);
       }
     }
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  };
+}
+
+export function withAdminAuth<TCtx = unknown>(
+  handler: (req: Request, session: Session, ctx: TCtx) => Promise<NextResponse>,
+) {
+  return withAuth<TCtx>(async (req, session, ctx) => {
+    if (session.user?.role !== "admin") {
+      return errorResponse("Forbidden", 403);
     }
 
     return handler(req, session, ctx);
-  };
+  }, { allowApiKey: false });
 }
 
 /**

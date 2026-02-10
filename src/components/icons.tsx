@@ -198,6 +198,14 @@ export function IconKey({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+export function IconShield({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m6 2.25c0 5.048-3.528 9.271-8.25 10.344C8.028 21.27 4.5 17.048 4.5 12V5.338c0-.556.38-1.04.927-1.172l6.75-1.636a1.125 1.125 0 0 1 .646 0l6.75 1.636c.547.133.927.616.927 1.172V12Z" />
+    </svg>
+  );
+}
+
 export function IconCopy({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

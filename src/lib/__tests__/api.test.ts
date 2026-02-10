@@ -64,4 +64,20 @@ describe("withAuth", () => {
     const res = await handler(req, mockCtx);
     expect(await res.json()).toEqual({ id: "abc" });
   });
+
+  it("returns 403 when account is frozen", async () => {
+    mockSession({
+      user: {
+        id: "user-1",
+        name: "Test",
+        email: "test@test.com",
+        isFrozen: true,
+      },
+    });
+    const handler = withAuth(async () => jsonResponse({ ok: true }));
+    const req = new Request("http://localhost/api/test");
+    const res = await handler(req, {});
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "Account is frozen" });
+  });
 });

@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/db";
-import { tasks, notes, projects, dispatches, accounts } from "@/db/schema";
+import { tasks, notes, projects, dispatches, accounts, users } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { ProfilePreferences } from "@/components/ProfilePreferences";
 
@@ -22,6 +23,7 @@ export default async function Profile() {
     [{ dispatchCount }],
     [{ doneCount }],
     linkedAccounts,
+    [currentUserRecord],
   ] = await Promise.all([
     db.select({ taskCount: sql<number>`count(*)` }).from(tasks).where(eq(tasks.userId, userId)),
     db.select({ noteCount: sql<number>`count(*)` }).from(notes).where(eq(notes.userId, userId)),
@@ -32,10 +34,17 @@ export default async function Profile() {
       .from(tasks)
       .where(eq(tasks.userId, userId)),
     db.select({ provider: accounts.provider }).from(accounts).where(eq(accounts.userId, userId)),
+    db
+      .select({ role: users.role, showAdminQuickAccess: users.showAdminQuickAccess })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1),
   ]);
 
   const providers = linkedAccounts.map((a) => a.provider).filter(Boolean);
   const completionPercent = taskCount > 0 ? Math.round(((doneCount ?? 0) / taskCount) * 100) : 0;
+  const isAdmin = currentUserRecord?.role === "admin";
+  const showAdminQuickAccess = currentUserRecord?.showAdminQuickAccess ?? true;
 
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-6 animate-fade-in-up">
@@ -65,6 +74,11 @@ export default async function Profile() {
             <p className="text-lg font-semibold dark:text-white">
               {user.name ?? "Unnamed User"}
             </p>
+            {isAdmin && (
+              <span className="inline-flex mt-1 rounded-full border border-amber-300/80 dark:border-amber-700/70 bg-amber-100/90 dark:bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:text-amber-300">
+                Administrator
+              </span>
+            )}
             {user.email && (
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 {user.email}
@@ -92,23 +106,25 @@ export default async function Profile() {
         <StatCard label="Dispatches" value={dispatchCount} color="yellow" />
       </section>
 
-      <ProfilePreferences />
+      <ProfilePreferences isAdmin={isAdmin} showAdminQuickAccess={showAdminQuickAccess} />
 
-      <section className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Shortcuts</h2>
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-          Navigate quickly with keyboard shortcuts.
-        </p>
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <ShortcutRow label="Open search" keys={["Ctrl", "K"]} />
-          <ShortcutRow label="New task" keys={["n", "t"]} />
-          <ShortcutRow label="New note" keys={["n", "n"]} />
-          <ShortcutRow label="Go to Dispatch" keys={["g", "d"]} />
-          <ShortcutRow label="Go to Insights" keys={["g", "i"]} />
-          <ShortcutRow label="Go to Tasks" keys={["g", "t"]} />
-          <ShortcutRow label="Show shortcuts" keys={["?"]} />
-        </div>
-      </section>
+      {isAdmin && (
+        <section className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 via-white to-yellow-50 dark:from-amber-950/30 dark:via-neutral-900 dark:to-yellow-950/20 p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Administration</h2>
+          <p className="text-xs text-amber-700/80 dark:text-amber-400 mt-1">
+            Access administrator controls for user management and security settings.
+          </p>
+          <div className="mt-4">
+            <Link
+              href="/administration"
+              className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-all active:scale-95"
+            >
+              Open Administration
+            </Link>
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }
@@ -133,24 +149,6 @@ function StatCard({
     <div className={`rounded-xl border p-4 ${colors[color]}`}>
       <p className="text-3xl font-bold">{value}</p>
       <p className="text-sm font-medium mt-1">{label}</p>
-    </div>
-  );
-}
-
-function ShortcutRow({ label, keys }: { label: string; keys: string[] }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2">
-      <span className="text-neutral-600 dark:text-neutral-300">{label}</span>
-      <div className="flex items-center gap-1">
-        {keys.map((key, i) => (
-          <span key={`${label}-${key}-${i}`} className="inline-flex items-center gap-1">
-            {i > 0 && <span className="text-xs text-neutral-400 dark:text-neutral-500">then</span>}
-            <kbd className="inline-block min-w-[24px] text-center text-xs font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded px-1.5 py-0.5">
-              {key}
-            </kbd>
-          </span>
-        ))}
-      </div>
     </div>
   );
 }

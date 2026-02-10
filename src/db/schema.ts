@@ -12,6 +12,11 @@ export const users = sqliteTable("user", {
   emailVerified: integer("emailVerified", { mode: "timestamp_ms" }),
   image: text("image"),
   password: text("password"), // hashed password for local accounts
+  role: text("role", { enum: ["member", "admin"] }).notNull().default("member"),
+  frozenAt: text("frozenAt"),
+  showAdminQuickAccess: integer("showAdminQuickAccess", { mode: "boolean" })
+    .notNull()
+    .default(true),
 });
 
 export const accounts = sqliteTable(
@@ -191,3 +196,13 @@ export const apiKeys = sqliteTable(
     index("api_key_key_idx").on(table.key),
   ]
 );
+
+export const securitySettings = sqliteTable("security_setting", {
+  id: integer("id").primaryKey().notNull().default(1),
+  databaseEncryptionEnabled: integer("databaseEncryptionEnabled", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  updatedAt: text("updatedAt")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});

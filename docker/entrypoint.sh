@@ -2,7 +2,7 @@
 set -eu
 
 echo "[dispatch] Initializing database schema..."
-npm run db:push
+npm run db:migrate
 
 echo "[dispatch] Starting server..."
 exec npm run start

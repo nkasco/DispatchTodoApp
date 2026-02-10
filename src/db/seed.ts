@@ -28,13 +28,14 @@ async function seed() {
         name: "Test User",
         email: seedEmail,
         password: seedPasswordHash,
+        role: "admin",
       })
       .returning();
     console.log("Created seed user:", user.email);
   } else {
     await db
       .update(users)
-      .set({ password: seedPasswordHash })
+      .set({ password: seedPasswordHash, role: "admin" })
       .where(eq(users.id, user.id));
     console.log("Using existing user:", user.email);
   }

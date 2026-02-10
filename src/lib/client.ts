@@ -3,6 +3,7 @@
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
 export type ProjectStatus = "active" | "paused" | "completed";
+export type UserRole = "member" | "admin";
 
 export interface Project {
   id: string;
@@ -101,6 +102,27 @@ export interface ApiKey {
   key: string;
   lastUsedAt: string | null;
   createdAt: string;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: UserRole;
+  frozenAt: string | null;
+  hasPassword: boolean;
+  providers: string[];
+}
+
+export interface AdminSecuritySettings {
+  databaseEncryptionEnabled: boolean;
+  sqlCipherAvailable: boolean;
+  configured: boolean;
+  updatedAt: string;
+}
+
+export interface MePreferences {
+  showAdminQuickAccess: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -369,5 +391,37 @@ export const api = {
 
     delete: (id: string) =>
       request<{ success: true }>(`/api-keys/${id}`, { method: "DELETE" }),
+  },
+
+  admin: {
+    listUsers: () => request<AdminUser[]>("/admin/users"),
+
+    createUser: (data: { name?: string; email: string; password: string; role?: UserRole }) =>
+      request<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(data) }),
+
+    updateUser: (
+      id: string,
+      data:
+        | { action: "freeze" }
+        | { action: "unfreeze" }
+        | { action: "set_role"; role: UserRole }
+        | { action: "reset_password"; password: string },
+    ) => request<AdminUser>(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+    deleteUser: (id: string) =>
+      request<{ deleted: true }>(`/admin/users/${id}`, { method: "DELETE" }),
+
+    getSecurity: () => request<AdminSecuritySettings>("/admin/security"),
+
+    updateSecurity: (data: { enabled: boolean; passphrase?: string }) =>
+      request<AdminSecuritySettings>("/admin/security", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  me: {
+    updatePreferences: (data: MePreferences) =>
+      request<MePreferences>("/me", { method: "PUT", body: JSON.stringify(data) }),
   },
 };
