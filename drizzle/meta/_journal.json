@@ -50,6 +50,27 @@
       "when": 1770532000000,
       "tag": "0006_sturdy_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1770684963315,
+      "tag": "0007_majestic_shatterstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1770747000000,
+      "tag": "0008_seed_admin_account",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1770757800000,
+      "tag": "0009_harsh_butterfly",
+      "breakpoints": true
     }
   ]
 }

@@ -26,6 +26,7 @@ import {
   IconTrash,
   IconList,
   IconPuzzle,
+  IconShield,
 } from "@/components/icons";
 
 interface SidebarProps {
@@ -45,10 +46,10 @@ const OVERVIEW_NAV: NavItem[] = [
 
 const WORKSPACE_NAV: NavItem[] = [
   { href: "/dispatch", label: "Dispatch", icon: IconCalendar },
-  { href: "/insights", label: "Insights", icon: IconChartBar },
   { href: "/inbox", label: "Priority Inbox", icon: IconInbox },
   { href: "/tasks", label: "Tasks", icon: IconCheckCircle },
   { href: "/notes", label: "Notes", icon: IconDocument },
+  { href: "/insights", label: "Insights", icon: IconChartBar },
   { href: "/recycle-bin", label: "Recycle Bin", icon: IconTrash },
 ];
 
@@ -58,7 +59,7 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.1";
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.2.0";
 
   const defaultSectionsOpen = useMemo(
     () => ({
@@ -139,6 +140,7 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
 
   const profileActive = isActive("/profile");
   const integrationsActive = isActive("/integrations");
+  const canShowAdminQuickAccess = session?.user?.role === "admin" && (session?.user?.showAdminQuickAccess ?? true);
 
   const currentProjectId = useMemo(() => {
     if (pathname.startsWith("/projects") || pathname.startsWith("/tasks")) {
@@ -568,14 +570,26 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
                     </span>
                   </Link>
                   {!collapsed && (
-                    <button
-                      onClick={() => signOut({ callbackUrl: "/login" })}
-                      title="Sign out"
-                      aria-label="Sign out"
-                      className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-700/70 bg-neutral-900/50 text-neutral-400 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:bg-neutral-800/80 hover:text-white transition-all active:scale-[0.97]"
-                    >
-                      <IconSignOut className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {canShowAdminQuickAccess && (
+                        <Link
+                          href="/administration"
+                          title="Administration"
+                          aria-label="Administration"
+                          className="flex h-7 w-7 items-center justify-center rounded-md border border-red-700/60 bg-red-950/20 text-red-400 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:bg-red-900/40 hover:text-red-200 transition-all active:scale-[0.97]"
+                        >
+                          <IconShield className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => signOut({ callbackUrl: "/login" })}
+                        title="Sign out"
+                        aria-label="Sign out"
+                        className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-700/70 bg-neutral-900/50 text-neutral-400 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:bg-neutral-800/80 hover:text-white transition-all active:scale-[0.97]"
+                      >
+                        <IconSignOut className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   )}
                 </div>
               </li>

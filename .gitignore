@@ -46,6 +46,8 @@ next-env.d.ts
 *.db
 *.db-journal
 *.db-wal
+.dispatch-security.json
+.dispatch-security.*.json
 
 # editor
 .vscode/*

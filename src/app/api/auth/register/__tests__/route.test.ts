@@ -49,6 +49,7 @@ describe("POST /api/auth/register", () => {
     expect(user).toBeDefined();
     expect(user.email).toBe("nate@example.com");
     expect(user.name).toBe("Nate");
+    expect(user.role).toBe("admin");
   });
 
   it("hashes the password (does not store plaintext)", async () => {
@@ -73,6 +74,27 @@ describe("POST /api/auth/register", () => {
 
     const [user] = testDb.db.select().from(users).all();
     expect(user.name).toBe("airforceones");
+    expect(user.role).toBe("admin");
+  });
+
+  it("assigns member role for non-first users", async () => {
+    await POST(jsonReq({
+      name: "First",
+      email: "first@example.com",
+      password: "test12345",
+    }) as any);
+
+    const secondRes = await POST(jsonReq({
+      name: "Second",
+      email: "second@example.com",
+      password: "test12345",
+    }) as any);
+
+    expect(secondRes.status).toBe(201);
+
+    const allUsers = testDb.db.select().from(users).all();
+    const second = allUsers.find((user) => user.email === "second@example.com");
+    expect(second?.role).toBe("member");
   });
 
   // --- Validation ---

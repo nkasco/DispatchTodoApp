@@ -28,16 +28,19 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 
 - **GitHub OAuth**: Conditionally enabled when `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET` env vars are set.
 - **Local Credentials**: Email/password registration and login via bcryptjs hashing. Registration endpoint at `POST /api/auth/register`.
+- **Role-based administration**: The first account created is automatically assigned the `admin` role.
+- **Account freeze controls**: Frozen accounts are blocked from sign-in and protected API access.
 - All API routes (except `/api/auth/*`) require a valid session.
 - The `withAuth` wrapper in `src/lib/api.ts` enforces this at the route level.
 - **API Key Auth**: Alternative authentication via `Authorization: Bearer <key>` or `X-API-Key: <key>` headers for programmatic access. Keys managed at `/api/api-keys`.
 - Sessions are JWT-based (required for Credentials provider compatibility with Drizzle adapter).
 - Custom sign-in page at `/login`.
+- Optional SQLCipher-backed at-rest database encryption is managed from the admin controls on `/profile`.
 
 ## Data Model
 
 ### Auth Tables
-- **users** — `id`, `name`, `email` (unique), `emailVerified`, `image`, `password`. Supports both OAuth (image from provider) and credentials (password hash).
+- **users** — `id`, `name`, `email` (unique), `emailVerified`, `image`, `password`, `role` (`member`/`admin`), `frozenAt?`. Supports both OAuth (image from provider) and credentials (password hash).
 - **accounts** — OAuth provider link records. Composite PK on `provider` + `providerAccountId`.
 - **sessions** — Session token tracking with expiry.
 
@@ -48,6 +51,7 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 - **dispatches** — `id`, `userId`, `date` (YYYY-MM-DD, unique per user per day), `summary?`, `finalized` (boolean), `createdAt`, `updatedAt`. Indexed on userId+date.
 - **dispatchTasks** — `dispatchId`, `taskId`. Composite PK join table.
 - **apiKeys** — `id`, `userId`, `name`, `key` (unique), `lastUsedAt?`, `createdAt`.
+- **securitySettings** — singleton app-level security flags including `databaseEncryptionEnabled`.
 
 ### Soft-Delete & Recycle Bin
 - Tasks, notes, and projects use soft-delete: `DELETE` sets a `deletedAt` timestamp instead of removing the row.
@@ -77,6 +81,8 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 | Search      | `/api/search?q=`       | --                          | Cross-entity search                                       |
 | Profile     | `/api/me`              | --                          | Current user info                                         |
 | API Keys    | `/api/api-keys`        | `/api/api-keys/[id]`        | Key management for programmatic access                    |
+| Admin Users | `/api/admin/users`     | `/api/admin/users/[id]`     | Admin user creation, deletion, freeze, role/password actions |
+| Admin Security | `/api/admin/security` | --                        | Admin database encryption settings                        |
 | Auth        | `/api/auth/[...nextauth]` | --                       | NextAuth.js catch-all                                     |
 | Register    | `/api/auth/register`   | --                          | POST email/password registration                          |
 
@@ -99,6 +105,9 @@ src/
     profile/page.tsx                # User profile (server component with DB queries)
     integrations/page.tsx           # API documentation + key management
     api/                            # All REST API route handlers (see endpoints above)
+      admin/users/route.ts          # Admin user list/create
+      admin/users/[id]/route.ts     # Admin user mutate/delete
+      admin/security/route.ts       # Admin security/encryption controls
   components/
     Providers.tsx                   # Composes SessionProvider + ThemeProvider + ToastProvider
     AppShell.tsx                    # Authenticated layout shell: Sidebar + SearchOverlay + KeyboardShortcuts
@@ -113,6 +122,7 @@ src/
     NoteEditor.tsx                  # Markdown note editor with formatting toolbar
     RecycleBinPage.tsx              # Recycle bin: restore, permanent delete, retention timers
     ProfilePreferences.tsx          # Theme toggle, API key management, sign-out
+    AdminSettingsPanel.tsx          # Admin-only control plane in Profile
     IntegrationsPage.tsx            # API docs with curl/fetch/PowerShell code generation
     SearchOverlay.tsx               # Global search overlay (Ctrl+K) with debounced cross-entity results
     KeyboardShortcuts.tsx           # Global keyboard shortcut handler
@@ -125,7 +135,7 @@ src/
     Pagination.tsx                  # Pagination controls
     icons.tsx                       # SVG icon library (25+ icons)
   lib/
-    api.ts                          # withAuth, getApiKeyFromRequest, resolveApiKeySession, jsonResponse, errorResponse
+    api.ts                          # withAuth, withAdminAuth, getApiKeyFromRequest, resolveApiKeySession, jsonResponse, errorResponse
     client.ts                       # Typed API client with all resource methods + type exports
     projects.ts                     # PROJECT_COLORS config, PROJECT_COLOR_OPTIONS, PROJECT_STATUS_OPTIONS
     pagination.ts                   # parsePagination, paginatedResponse helpers
@@ -195,3 +205,4 @@ src/
 | `AUTH_SECRET`       | NextAuth.js JWT signing secret       |
 | `AUTH_GITHUB_ID`    | GitHub OAuth app client ID           |
 | `AUTH_GITHUB_SECRET`| GitHub OAuth app client secret       |
+| `DISPATCH_SECURITY_CONFIG_PATH` | Optional override for local encryption state file path |

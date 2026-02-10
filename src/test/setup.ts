@@ -1,7 +1,18 @@
 import { vi } from "vitest";
 
 // Mock next-auth's auth() — individual tests override via mockSession()
-let currentSession: { user: { id: string; name: string; email: string } } | null = null;
+type MockSession = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role?: "member" | "admin";
+    isFrozen?: boolean;
+    showAdminQuickAccess?: boolean;
+  };
+} | null;
+
+let currentSession: MockSession = null;
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(() => Promise.resolve(currentSession)),
@@ -12,7 +23,7 @@ vi.mock("@/auth", () => ({
  * Pass `null` to simulate an unauthenticated request.
  */
 export function mockSession(
-  session: { user: { id: string; name: string; email: string } } | null
+  session: MockSession
 ) {
   currentSession = session;
 }

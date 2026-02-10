@@ -1,6 +1,6 @@
 {
   "name": "dispatch",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "npm:better-sqlite3-multiple-ciphers@^12.6.2",
     "drizzle-orm": "^0.45.1",
     "next": "^16.1.6",
     "next-auth": "^5.0.0-beta.30",

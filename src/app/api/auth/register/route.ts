@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { jsonResponse, errorResponse } from "@/lib/api";
 
@@ -19,9 +19,11 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid input", 400);
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return errorResponse("Invalid email format", 400);
     }
 
@@ -34,12 +36,16 @@ export async function POST(req: NextRequest) {
     const [existingUser] = await db
       .select()
       .from(users)
-      .where(eq(users.email, email))
+      .where(eq(users.email, normalizedEmail))
       .limit(1);
 
     if (existingUser) {
       return errorResponse("Email already registered", 409);
     }
+
+    const [{ userCount }] = await db
+      .select({ userCount: sql<number>`count(*)` })
+      .from(users);
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -48,9 +54,10 @@ export async function POST(req: NextRequest) {
     const id = crypto.randomUUID();
     await db.insert(users).values({
       id,
-      email,
-      name: name || email.split("@")[0],
+      email: normalizedEmail,
+      name: name || normalizedEmail.split("@")[0],
       password: hashedPassword,
+      role: (userCount ?? 0) === 0 ? "admin" : "member",
     });
 
     return jsonResponse(

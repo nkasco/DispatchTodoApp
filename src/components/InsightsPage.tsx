@@ -1,121 +1,94 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { api, type Task } from "@/lib/client";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, TASKS_CHANGED_EVENT, type Task } from "@/lib/client";
+import {
+  buildDailyPoints,
+  calculateInsightsTotals,
+  shouldApplyInsightsFetchResult,
+  shouldFinalizeInsightsLoading,
+  type DailyPoint,
+} from "@/lib/insights";
 import { IconCalendar, IconChartBar, IconCheckCircle } from "@/components/icons";
 
 const RANGE_OPTIONS = [7, 14, 30, 90] as const;
 
 type RangeOption = (typeof RANGE_OPTIONS)[number];
 
-type DailyPoint = {
-  dateKey: string;
-  label: string;
-  created: number;
-  completed: number;
-};
-
-function dateKeyFor(date: Date) {
-  return date.toISOString().split("T")[0];
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function normalizeDate(iso: string) {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
 export function InsightsPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState<RangeOption>(30);
+  const mountedRef = useRef(true);
+  const fetchVersionRef = useRef(0);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
+  const fetchTasks = useCallback(async (withLoading = false) => {
+    const requestVersion = ++fetchVersionRef.current;
+    if (withLoading && mountedRef.current) {
+      setLoading(true);
+    }
 
-    api.tasks
-      .list()
-      .then((result) => {
-        if (!active) return;
-        setTasks(Array.isArray(result) ? result : result.data);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
+    try {
+      const result = await api.tasks.list();
+      if (
+        !shouldApplyInsightsFetchResult(
+          requestVersion,
+          fetchVersionRef.current,
+          mountedRef.current,
+        )
+      ) {
+        return;
+      }
+      setTasks(Array.isArray(result) ? result : result.data);
+    } finally {
+      if (shouldFinalizeInsightsLoading(withLoading, mountedRef.current)) {
+        setLoading(false);
+      }
+    }
   }, []);
 
-  const points = useMemo<DailyPoint[]>(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  useEffect(() => {
+    void fetchTasks(true);
+  }, [fetchTasks]);
 
-    const startDate = addDays(today, -(rangeDays - 1));
-    const keys: string[] = [];
-    const labels = new Map<string, string>();
-
-    for (let i = 0; i < rangeDays; i += 1) {
-      const current = addDays(startDate, i);
-      const key = dateKeyFor(current);
-      keys.push(key);
-      labels.set(
-        key,
-        current.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      );
+  useEffect(() => {
+    function handleTasksChanged() {
+      void fetchTasks();
     }
 
-    const createdByDay = new Map<string, number>();
-    const completedByDay = new Map<string, number>();
+    function handleFocus() {
+      void fetchTasks();
+    }
 
-    for (const task of tasks) {
-      const createdAt = normalizeDate(task.createdAt);
-      if (createdAt) {
-        const createdKey = dateKeyFor(createdAt);
-        if (labels.has(createdKey)) {
-          createdByDay.set(createdKey, (createdByDay.get(createdKey) ?? 0) + 1);
-        }
-      }
-
-      if (task.status === "done") {
-        const completedAt = normalizeDate(task.updatedAt);
-        if (completedAt) {
-          const completedKey = dateKeyFor(completedAt);
-          if (labels.has(completedKey)) {
-            completedByDay.set(completedKey, (completedByDay.get(completedKey) ?? 0) + 1);
-          }
-        }
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void fetchTasks();
       }
     }
 
-    return keys.map((dateKey) => ({
-      dateKey,
-      label: labels.get(dateKey) ?? dateKey,
-      created: createdByDay.get(dateKey) ?? 0,
-      completed: completedByDay.get(dateKey) ?? 0,
-    }));
-  }, [rangeDays, tasks]);
+    window.addEventListener(TASKS_CHANGED_EVENT, handleTasksChanged);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-  const totals = useMemo(() => {
-    const created = points.reduce((sum, point) => sum + point.created, 0);
-    const completed = points.reduce((sum, point) => sum + point.completed, 0);
-    const peakDay = [...points].sort((a, b) => b.completed - a.completed)[0];
-    const completionRate = created > 0 ? Math.round((completed / created) * 100) : 0;
-
-    return {
-      created,
-      completed,
-      completionRate,
-      peakDay,
+    return () => {
+      window.removeEventListener(TASKS_CHANGED_EVENT, handleTasksChanged);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [points]);
+  }, [fetchTasks]);
+
+  useEffect(
+    () => {
+      mountedRef.current = true;
+      return () => {
+        mountedRef.current = false;
+      };
+    },
+    [],
+  );
+
+  const points = useMemo<DailyPoint[]>(() => buildDailyPoints(tasks, rangeDays), [rangeDays, tasks]);
+  const totals = useMemo(() => calculateInsightsTotals(points), [points]);
 
   const chart = useMemo(() => {
     if (points.length === 0) {

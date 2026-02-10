@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { api, ApiError } from "@/lib/client";
+import { api, ApiError, TASKS_CHANGED_EVENT } from "@/lib/client";
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -170,6 +170,63 @@ describe("api.tasks", () => {
         method: "DELETE",
       }));
       expect(result).toEqual({ deleted: true });
+    });
+  });
+
+  describe("mutation events", () => {
+    it("emits tasks:changed for create, update, and delete", async () => {
+      const originalWindow = (globalThis as { window?: unknown }).window;
+      const originalCustomEvent = (globalThis as { CustomEvent?: unknown }).CustomEvent;
+      const dispatchEvent = vi.fn();
+
+      class TestCustomEvent {
+        type: string;
+        detail: unknown;
+
+        constructor(type: string, init?: { detail?: unknown }) {
+          this.type = type;
+          this.detail = init?.detail;
+        }
+      }
+
+      (globalThis as { window?: unknown }).window = { dispatchEvent };
+      (globalThis as { CustomEvent?: unknown }).CustomEvent = TestCustomEvent;
+
+      mockFetch
+        .mockResolvedValueOnce(jsonOk({ id: "c1", title: "Created" }))
+        .mockResolvedValueOnce(jsonOk({ id: "u1", title: "Updated" }))
+        .mockResolvedValueOnce(jsonOk({ deleted: true }));
+
+      try {
+        await api.tasks.create({ title: "Created" });
+        await api.tasks.update("u1", { title: "Updated" });
+        await api.tasks.delete("d1");
+      } finally {
+        (globalThis as { window?: unknown }).window = originalWindow;
+        (globalThis as { CustomEvent?: unknown }).CustomEvent = originalCustomEvent;
+      }
+
+      expect(dispatchEvent).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          type: TASKS_CHANGED_EVENT,
+          detail: { action: "create", taskId: "c1" },
+        }),
+      );
+      expect(dispatchEvent).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          type: TASKS_CHANGED_EVENT,
+          detail: { action: "update", taskId: "u1" },
+        }),
+      );
+      expect(dispatchEvent).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          type: TASKS_CHANGED_EVENT,
+          detail: { action: "delete", taskId: "d1" },
+        }),
+      );
     });
   });
 });

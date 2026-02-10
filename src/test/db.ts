@@ -19,7 +19,10 @@ export function createTestDb() {
       "email" text,
       "emailVerified" integer,
       "image" text,
-      "password" text
+      "password" text,
+      "role" text NOT NULL DEFAULT 'member',
+      "frozenAt" text,
+      "showAdminQuickAccess" integer NOT NULL DEFAULT 1
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS "user_email_unique" ON "user" ("email");
@@ -108,6 +111,25 @@ export function createTestDb() {
       "dispatchId" text NOT NULL REFERENCES "dispatch"("id") ON DELETE CASCADE,
       "taskId" text NOT NULL REFERENCES "task"("id") ON DELETE CASCADE,
       PRIMARY KEY ("dispatchId", "taskId")
+    );
+
+    CREATE TABLE "api_key" (
+      "id" text PRIMARY KEY NOT NULL,
+      "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+      "name" text NOT NULL,
+      "key" text NOT NULL,
+      "lastUsedAt" text,
+      "createdAt" text NOT NULL DEFAULT (current_timestamp)
+    );
+
+    CREATE UNIQUE INDEX "api_key_key_unique" ON "api_key" ("key");
+    CREATE INDEX "api_key_userId_idx" ON "api_key" ("userId");
+    CREATE INDEX "api_key_key_idx" ON "api_key" ("key");
+
+    CREATE TABLE "security_setting" (
+      "id" integer PRIMARY KEY NOT NULL DEFAULT 1,
+      "databaseEncryptionEnabled" integer NOT NULL DEFAULT 0,
+      "updatedAt" text NOT NULL DEFAULT (current_timestamp)
     );
   `);
 
