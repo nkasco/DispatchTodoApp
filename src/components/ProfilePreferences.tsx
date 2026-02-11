@@ -6,6 +6,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/ToastProvider";
 import { api, type AIConfig, type AIModelInfo, type AIProvider } from "@/lib/client";
 import { IconKey, IconMoon, IconSparkles, IconSun } from "@/components/icons";
+import { CustomSelect } from "@/components/CustomSelect";
 
 const PROVIDER_OPTIONS: Array<{ value: AIProvider; label: string }> = [
   { value: "openai", label: "OpenAI" },
@@ -55,7 +56,6 @@ export function ProfilePreferences({
   const [aiLoading, setAiLoading] = useState(true);
   const [aiSaving, setAiSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
 
   const [activeConfig, setActiveConfig] = useState<AIConfig | null>(null);
   const [aiReadOnly, setAiReadOnly] = useState(false);
@@ -78,6 +78,14 @@ export function ProfilePreferences({
   const hasSavedApiKey = Boolean(activeConfigMatchesProvider && activeConfig?.hasApiKey);
   const maskedSavedApiKey = activeConfigMatchesProvider ? activeConfig?.maskedApiKey : null;
   const hasUnsavedApiKey = apiKeyInput.trim().length > 0;
+  const providerSelectOptions = useMemo(
+    () => PROVIDER_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+    [],
+  );
+  const modelSelectOptions = useMemo(
+    () => models.map((entry) => ({ value: entry.id, label: entry.label })),
+    [models],
+  );
 
   const loadConfig = useCallback(async () => {
     setAiLoading(true);
@@ -210,7 +218,6 @@ export function ProfilePreferences({
 
       const result = await api.ai.config.update(payload);
       setApiKeyInput("");
-      setShowApiKey(false);
 
       try {
         const refreshed = await api.ai.config.get();
@@ -372,29 +379,20 @@ export function ProfilePreferences({
               </div>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-xs text-neutral-500 dark:text-neutral-400">
-                Provider
-                <select
-                  value={provider}
-                  onChange={(event) => {
-                    const nextProvider = event.target.value as AIProvider;
-                    setProvider(nextProvider);
-                    setApiKeyInput("");
-                    setShowApiKey(false);
-                    setBaseUrl(DEFAULT_BASE_URL[nextProvider]);
-                    setModel(DEFAULT_MODEL[nextProvider]);
-                    setModels([]);
-                  }}
-                  disabled={aiReadOnly}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-800 dark:text-neutral-100"
-                >
-                  {PROVIDER_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <CustomSelect
+                label="Provider"
+                value={provider}
+                onChange={(value) => {
+                  const nextProvider = value as AIProvider;
+                  setProvider(nextProvider);
+                  setApiKeyInput("");
+                  setBaseUrl(DEFAULT_BASE_URL[nextProvider]);
+                  setModel(DEFAULT_MODEL[nextProvider]);
+                  setModels([]);
+                }}
+                options={providerSelectOptions}
+                disabled={aiReadOnly}
+              />
 
               <label className="text-xs text-neutral-500 dark:text-neutral-400">
                 Base URL
@@ -403,7 +401,7 @@ export function ProfilePreferences({
                   onChange={(event) => setBaseUrl(event.target.value)}
                   placeholder={DEFAULT_BASE_URL[provider]}
                   disabled={aiReadOnly}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-800 dark:text-neutral-100"
+                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </label>
             </div>
@@ -415,22 +413,14 @@ export function ProfilePreferences({
                   <div className="relative flex-1">
                     <IconKey className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                     <input
-                      type={showApiKey ? "text" : "password"}
+                      type="password"
                       value={apiKeyInput}
                       onChange={(event) => setApiKeyInput(event.target.value)}
                       placeholder={maskedSavedApiKey || "Enter API key"}
                       disabled={aiReadOnly}
-                      className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-800 dark:text-neutral-100"
+                      className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 py-2 pl-9 pr-3 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey((prev) => !prev)}
-                    disabled={aiReadOnly}
-                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all active:scale-95"
-                  >
-                    {showApiKey ? "Hide" : "Show"}
-                  </button>
                 </div>
                 {hasSavedApiKey && !apiKeyInput && (
                   <span className="mt-1 block text-[11px] text-neutral-400 dark:text-neutral-500">
@@ -449,29 +439,26 @@ export function ProfilePreferences({
                 )}
               </label>
 
-              <label className="text-xs text-neutral-500 dark:text-neutral-400">
-                Model
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">
                 {models.length > 0 ? (
-                  <select
+                  <CustomSelect
+                    label="Model"
                     value={model}
-                    onChange={(event) => setModel(event.target.value)}
+                    onChange={(value) => setModel(value)}
+                    options={modelSelectOptions}
                     disabled={aiReadOnly}
-                    className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-800 dark:text-neutral-100"
-                  >
-                    {models.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={model}
-                    onChange={(event) => setModel(event.target.value)}
-                    placeholder={DEFAULT_MODEL[provider]}
-                    disabled={aiReadOnly}
-                    className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-800 dark:text-neutral-100"
                   />
+                ) : (
+                  <label className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Model
+                    <input
+                      value={model}
+                      onChange={(event) => setModel(event.target.value)}
+                      placeholder={DEFAULT_MODEL[provider]}
+                      disabled={aiReadOnly}
+                      className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </label>
                 )}
                 <span className="mt-1 block text-[11px] text-neutral-400 dark:text-neutral-500">
                   {loadingModels
@@ -482,7 +469,7 @@ export function ProfilePreferences({
                         ? "Save API key + configuration to load selectable models."
                         : "Manual model entry"}
                 </span>
-              </label>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
