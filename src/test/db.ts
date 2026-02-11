@@ -130,6 +130,7 @@ export function createTestDb() {
     CREATE TABLE "security_setting" (
       "id" integer PRIMARY KEY NOT NULL DEFAULT 1,
       "databaseEncryptionEnabled" integer NOT NULL DEFAULT 0,
+      "shareAiApiKeyWithUsers" integer NOT NULL DEFAULT 0,
       "updatedAt" text NOT NULL DEFAULT (current_timestamp)
     );
 

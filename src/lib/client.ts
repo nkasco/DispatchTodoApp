@@ -117,6 +117,7 @@ export interface AdminUser {
 
 export interface AdminSecuritySettings {
   databaseEncryptionEnabled: boolean;
+  shareAiApiKeyWithUsers: boolean;
   sqlCipherAvailable: boolean;
   configured: boolean;
   updatedAt: string;
@@ -143,6 +144,13 @@ export interface AIConfig {
 export interface AIModelInfo {
   id: string;
   label: string;
+}
+
+export interface AIConfigPayload {
+  config: AIConfig | null;
+  defaults?: { provider: AIProvider; model: string; baseUrl: string | null };
+  readOnly?: boolean;
+  readOnlyReason?: string | null;
 }
 
 export interface ChatConversation {
@@ -485,7 +493,7 @@ export const api = {
 
     getSecurity: () => request<AdminSecuritySettings>("/admin/security"),
 
-    updateSecurity: (data: { enabled: boolean; passphrase?: string }) =>
+    updateSecurity: (data: { enabled?: boolean; passphrase?: string; shareAiApiKeyWithUsers?: boolean }) =>
       request<AdminSecuritySettings>("/admin/security", {
         method: "PUT",
         body: JSON.stringify(data),
@@ -494,7 +502,7 @@ export const api = {
 
   ai: {
     config: {
-      get: () => request<{ config: AIConfig | null; defaults?: { provider: AIProvider; model: string; baseUrl: string | null } }>("/ai/config"),
+      get: () => request<AIConfigPayload>("/ai/config"),
 
       update: (data: {
         provider?: AIProvider;

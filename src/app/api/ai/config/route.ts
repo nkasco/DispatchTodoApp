@@ -5,6 +5,7 @@ import { errorResponse, jsonResponse, withAuth } from "@/lib/api";
 import {
   AI_PROVIDERS,
   getActiveAiConfigForUser,
+  isAiApiKeySharingEnabled,
   getDefaultBaseUrl,
   getDefaultModel,
   isAIProvider,
@@ -14,6 +15,10 @@ import {
 import { encryptAiApiKey, maskApiKey } from "@/lib/ai-encryption";
 
 export const GET = withAuth(async (_req, session) => {
+  const readOnly = session.user.role !== "admin" && await isAiApiKeySharingEnabled();
+  const readOnlyReason = readOnly
+    ? "AI settings are managed by an administrator while shared key access is enabled."
+    : null;
   const config = await getActiveAiConfigForUser(session.user.id);
   if (!config) {
     return jsonResponse({
@@ -23,6 +28,8 @@ export const GET = withAuth(async (_req, session) => {
         model: getDefaultModel("openai"),
         baseUrl: getDefaultBaseUrl("openai"),
       },
+      readOnly,
+      readOnlyReason,
     });
   }
 
@@ -39,10 +46,16 @@ export const GET = withAuth(async (_req, session) => {
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     },
+    readOnly,
+    readOnlyReason,
   });
 }, { allowApiKey: false });
 
 export const PUT = withAuth(async (req, session) => {
+  if (session.user.role !== "admin" && await isAiApiKeySharingEnabled()) {
+    return errorResponse("AI settings are read-only while admin key sharing is enabled", 403);
+  }
+
   let body: unknown;
   try {
     body = await req.json();

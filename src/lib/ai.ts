@@ -1,11 +1,11 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { generateText, type LanguageModel, type UIMessage } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { db } from "@/db";
-import { aiConfigs } from "@/db/schema";
+import { aiConfigs, securitySettings, users } from "@/db/schema";
 import { decryptAiApiKey } from "@/lib/ai-encryption";
 
 export const AI_PROVIDERS = [
@@ -98,6 +98,33 @@ export function providerLabel(provider: AIProvider): string {
   }
 }
 
+function isMissingSharedAiColumnError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /no such column/i.test(error.message) &&
+    error.message.includes("shareAiApiKeyWithUsers")
+  );
+}
+
+export async function isAiApiKeySharingEnabled(): Promise<boolean> {
+  let settings: { shareAiApiKeyWithUsers: boolean | null } | undefined;
+  try {
+    [settings] = await db
+      .select({ shareAiApiKeyWithUsers: securitySettings.shareAiApiKeyWithUsers })
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .limit(1);
+  } catch (error) {
+    // Backward compatibility when local DB has not yet run the migration.
+    if (isMissingSharedAiColumnError(error)) {
+      return false;
+    }
+    throw error;
+  }
+
+  return Boolean(settings?.shareAiApiKeyWithUsers);
+}
+
 export async function getActiveAiConfigForUser(userId: string): Promise<UserAiConfig | null> {
   const [active] = await db
     .select()
@@ -109,26 +136,96 @@ export async function getActiveAiConfigForUser(userId: string): Promise<UserAiCo
   const [fallback] = active
     ? [active]
     : await db.select().from(aiConfigs).where(eq(aiConfigs.userId, userId)).limit(1);
+  const userConfig = fallback ? decryptConfigRecord(fallback) : null;
 
-  if (!fallback) return null;
-  if (!isAIProvider(fallback.provider)) {
-    throw new Error(`Unsupported AI provider "${fallback.provider}"`);
+  if (userConfig && (userConfig.apiKey || !requiresApiKey(userConfig.provider))) {
+    return userConfig;
+  }
+
+  // Optionally allow all users to consume a shared admin API key.
+  const sharedMatching = await getSharedAdminAiConfig(userConfig?.provider);
+  if (sharedMatching && userConfig) {
+    if (sharedMatching.provider === userConfig.provider) {
+      return { ...userConfig, apiKey: sharedMatching.apiKey };
+    }
+  }
+
+  if (sharedMatching && !userConfig) {
+    return sharedMatching;
+  }
+
+  const sharedAny = await getSharedAdminAiConfig();
+  if (sharedAny) {
+    return sharedAny;
+  }
+
+  if (userConfig) {
+    return userConfig;
+  }
+
+  return sharedAny;
+}
+
+function decryptConfigRecord(record: typeof aiConfigs.$inferSelect): UserAiConfig {
+  if (!isAIProvider(record.provider)) {
+    throw new Error(`Unsupported AI provider "${record.provider}"`);
   }
 
   let decryptedApiKey: string | null = null;
-  if (fallback.apiKey) {
+  if (record.apiKey) {
     try {
-      decryptedApiKey = decryptAiApiKey(fallback.apiKey);
+      decryptedApiKey = decryptAiApiKey(record.apiKey);
     } catch {
       throw new Error("Unable to decrypt saved API key. Re-save your AI configuration.");
     }
   }
 
   return {
-    ...fallback,
-    provider: fallback.provider,
+    ...record,
+    provider: record.provider,
     apiKey: decryptedApiKey,
   };
+}
+
+async function getSharedAdminAiConfig(preferredProvider?: AIProvider): Promise<UserAiConfig | null> {
+  if (!(await isAiApiKeySharingEnabled())) {
+    return null;
+  }
+
+  const adminRows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.role, "admin"));
+  const adminIds = adminRows.map((row) => row.id);
+  if (adminIds.length === 0) {
+    return null;
+  }
+
+  const filters = [
+    inArray(aiConfigs.userId, adminIds),
+    eq(aiConfigs.isActive, true),
+    isNotNull(aiConfigs.apiKey),
+  ];
+  if (preferredProvider) {
+    filters.push(eq(aiConfigs.provider, preferredProvider));
+  }
+
+  const [matching] = await db
+    .select()
+    .from(aiConfigs)
+    .where(and(...filters))
+    .orderBy(desc(aiConfigs.updatedAt))
+    .limit(1);
+
+  if (matching) {
+    return decryptConfigRecord(matching);
+  }
+
+  if (preferredProvider) {
+    return null;
+  }
+
+  return null;
 }
 
 export function assertAiConfigReady(config: UserAiConfig) {

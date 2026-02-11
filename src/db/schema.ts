@@ -205,6 +205,9 @@ export const securitySettings = sqliteTable("security_setting", {
   databaseEncryptionEnabled: integer("databaseEncryptionEnabled", { mode: "boolean" })
     .notNull()
     .default(false),
+  shareAiApiKeyWithUsers: integer("shareAiApiKeyWithUsers", { mode: "boolean" })
+    .notNull()
+    .default(false),
   updatedAt: text("updatedAt")
     .notNull()
     .default(sql`(current_timestamp)`),

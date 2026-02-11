@@ -32,6 +32,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
   const [passwordResets, setPasswordResets] = useState<Record<string, string>>({});
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const [encryptionPassphrase, setEncryptionPassphrase] = useState("");
+  const [shareAiApiKeyWithUsers, setShareAiApiKeyWithUsers] = useState(false);
   const [userManagementOpen, setUserManagementOpen] = useState(false);
 
   const usersById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
@@ -53,6 +54,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
       setUsers(nextUsers);
       setSecurity(nextSecurity);
       setEncryptionEnabled(nextSecurity.databaseEncryptionEnabled);
+      setShareAiApiKeyWithUsers(nextSecurity.shareAiApiKeyWithUsers);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to load administration data");
     } finally {
@@ -148,6 +150,22 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
       toast.success("Security settings updated");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update encryption settings");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function handleSaveAiKeySharing() {
+    setBusyKey("ai-key-sharing");
+    try {
+      const next = await api.admin.updateSecurity({
+        shareAiApiKeyWithUsers,
+      });
+      setSecurity(next);
+      setShareAiApiKeyWithUsers(next.shareAiApiKeyWithUsers);
+      toast.success("AI key sharing setting updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update AI key sharing");
     } finally {
       setBusyKey(null);
     }
@@ -340,6 +358,37 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
           })}
           </div>
         )}
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-950/40 p-4">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+          <IconKey className="w-4 h-4" />
+          Personal Assistant Key Sharing
+        </h3>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Allow Dispatch users without their own provider key to use an administrator-managed AI API key.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <input
+              type="checkbox"
+              checked={shareAiApiKeyWithUsers}
+              onChange={(event) => setShareAiApiKeyWithUsers(event.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300 dark:border-neutral-700"
+            />
+            Make admin API key available to all users
+          </label>
+          <button
+            onClick={handleSaveAiKeySharing}
+            disabled={busyKey === "ai-key-sharing"}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
+        <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+          Default is off.
+        </p>
       </div>
 
       <div className="space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-950/40 p-4">
