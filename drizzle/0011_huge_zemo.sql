@@ -1,0 +1,1 @@
+ALTER TABLE `security_setting` ADD `shareAiApiKeyWithUsers` integer DEFAULT false NOT NULL;

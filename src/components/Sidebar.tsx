@@ -27,6 +27,7 @@ import {
   IconList,
   IconPuzzle,
   IconShield,
+  IconSparkles,
 } from "@/components/icons";
 
 interface SidebarProps {
@@ -59,7 +60,7 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.2.0";
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.0";
 
   const defaultSectionsOpen = useMemo(
     () => ({
@@ -150,6 +151,13 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
   }, [pathname, searchParams]);
 
   const projectsRootActive = pathname.startsWith("/projects") && !currentProjectId;
+  const workspaceNavItems = useMemo(() => {
+    const items = [...WORKSPACE_NAV];
+    if (session?.user?.assistantEnabled ?? true) {
+      items.unshift({ href: "/assistant", label: "Personal Assistant", icon: IconSparkles });
+    }
+    return items;
+  }, [session?.user?.assistantEnabled]);
 
   const quickActions = [
     {
@@ -324,7 +332,7 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
 
           {(sectionsOpen.workspace || collapsed) && (
             <ul className="space-y-0.5">
-              {WORKSPACE_NAV.map((item) => {
+              {workspaceNavItems.map((item) => {
                 const active = isActive(item.href);
                 const Icon = item.icon;
                 return (

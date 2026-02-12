@@ -20,6 +20,7 @@ const TEST_USER = {
   email: "test@example.com",
   role: "admin" as const,
   showAdminQuickAccess: true,
+  assistantEnabled: true,
 };
 
 function jsonReq(url: string, body: unknown) {
@@ -57,7 +58,7 @@ describe("Me API", () => {
       {},
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ showAdminQuickAccess: false });
+    expect(await res.json()).toEqual({ showAdminQuickAccess: false, assistantEnabled: true });
 
     const [updated] = testDb.db
       .select({ showAdminQuickAccess: users.showAdminQuickAccess })
@@ -65,6 +66,22 @@ describe("Me API", () => {
       .where(eq(users.id, TEST_USER.id))
       .all();
     expect(updated.showAdminQuickAccess).toBe(false);
+  });
+
+  it("PUT updates assistantEnabled to false", async () => {
+    const res = await PUT(
+      jsonReq("http://localhost/api/me", { assistantEnabled: false }),
+      {},
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ showAdminQuickAccess: true, assistantEnabled: false });
+
+    const [updated] = testDb.db
+      .select({ assistantEnabled: users.assistantEnabled })
+      .from(users)
+      .where(eq(users.id, TEST_USER.id))
+      .all();
+    expect(updated.assistantEnabled).toBe(false);
   });
 
   it("PUT rejects invalid payload values", async () => {
@@ -84,4 +101,3 @@ describe("Me API", () => {
     expect(res.status).toBe(401);
   });
 });
-

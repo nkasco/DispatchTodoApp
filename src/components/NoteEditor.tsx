@@ -26,7 +26,7 @@ function mergeClass(base: string, extra?: string) {
   return extra ? `${base} ${extra}` : base;
 }
 
-const markdownComponents = {
+export const markdownComponents = {
   h1: ({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) => (
     <h1
       className={mergeClass(

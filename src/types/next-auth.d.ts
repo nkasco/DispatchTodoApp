@@ -8,6 +8,7 @@ declare module "next-auth" {
       role: "member" | "admin";
       isFrozen: boolean;
       showAdminQuickAccess: boolean;
+      assistantEnabled: boolean;
       name?: string | null;
       email?: string | null;
       image?: string | null;
@@ -18,6 +19,7 @@ declare module "next-auth" {
     role?: "member" | "admin";
     isFrozen?: boolean;
     showAdminQuickAccess?: boolean;
+    assistantEnabled?: boolean;
   }
 }
 
@@ -26,6 +28,7 @@ declare module "next-auth/jwt" {
     role?: "member" | "admin";
     isFrozen?: boolean;
     showAdminQuickAccess?: boolean;
+    assistantEnabled?: boolean;
     provider?: string;
   }
 }

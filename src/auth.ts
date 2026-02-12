@@ -36,13 +36,14 @@ function isStaleJwtSecretError(code: unknown, details: unknown[]): boolean {
 
 async function getUserAccess(
   userId: string,
-): Promise<{ role: UserRole; isFrozen: boolean; showAdminQuickAccess: boolean }> {
+): Promise<{ role: UserRole; isFrozen: boolean; showAdminQuickAccess: boolean; assistantEnabled: boolean }> {
   ensureAuthDatabaseReady();
   const [dbUser] = await db
     .select({
       role: users.role,
       frozenAt: users.frozenAt,
       showAdminQuickAccess: users.showAdminQuickAccess,
+      assistantEnabled: users.assistantEnabled,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -52,6 +53,7 @@ async function getUserAccess(
     role: (dbUser?.role as UserRole | undefined) ?? "member",
     isFrozen: Boolean(dbUser?.frozenAt),
     showAdminQuickAccess: dbUser?.showAdminQuickAccess ?? true,
+    assistantEnabled: dbUser?.assistantEnabled ?? true,
   };
 }
 
@@ -94,6 +96,7 @@ providers.push(
         role: user.role ?? "member",
         isFrozen: false,
         showAdminQuickAccess: user.showAdminQuickAccess ?? true,
+        assistantEnabled: user.assistantEnabled ?? true,
       };
     },
   })
@@ -181,12 +184,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.role = access.role;
           token.isFrozen = access.isFrozen;
           token.showAdminQuickAccess = access.showAdminQuickAccess;
+          token.assistantEnabled = access.assistantEnabled;
         } catch (error) {
           // Avoid invalidating the active session during transient rekey transitions.
           console.error("Failed to refresh JWT access claims from database:", error);
           token.role = (token.role as UserRole | undefined) ?? "member";
           token.isFrozen = Boolean(token.isFrozen);
           token.showAdminQuickAccess = (token.showAdminQuickAccess as boolean | undefined) ?? true;
+          token.assistantEnabled = (token.assistantEnabled as boolean | undefined) ?? true;
         }
       }
 
@@ -198,6 +203,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = (token.role as UserRole | undefined) ?? "member";
         session.user.isFrozen = Boolean(token.isFrozen);
         session.user.showAdminQuickAccess = (token.showAdminQuickAccess as boolean | undefined) ?? true;
+        session.user.assistantEnabled = (token.assistantEnabled as boolean | undefined) ?? true;
       }
       return session;
     },

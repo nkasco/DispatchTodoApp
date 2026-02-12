@@ -15,21 +15,37 @@ export const PUT = withAuth(async (req, session) => {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const { showAdminQuickAccess } = body as Record<string, unknown>;
+  const { showAdminQuickAccess, assistantEnabled } = body as Record<string, unknown>;
 
-  if (typeof showAdminQuickAccess !== "boolean") {
+  if (showAdminQuickAccess !== undefined && typeof showAdminQuickAccess !== "boolean") {
     return errorResponse("showAdminQuickAccess must be a boolean", 400);
   }
 
+  if (assistantEnabled !== undefined && typeof assistantEnabled !== "boolean") {
+    return errorResponse("assistantEnabled must be a boolean", 400);
+  }
+
+  if (showAdminQuickAccess === undefined && assistantEnabled === undefined) {
+    return errorResponse("At least one preference field is required", 400);
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (showAdminQuickAccess !== undefined) updates.showAdminQuickAccess = showAdminQuickAccess;
+  if (assistantEnabled !== undefined) updates.assistantEnabled = assistantEnabled;
+
   const [updated] = await db
     .update(users)
-    .set({ showAdminQuickAccess })
+    .set(updates)
     .where(eq(users.id, session.user.id))
     .returning({
       showAdminQuickAccess: users.showAdminQuickAccess,
+      assistantEnabled: users.assistantEnabled,
     });
 
   return jsonResponse({
-    showAdminQuickAccess: updated?.showAdminQuickAccess ?? showAdminQuickAccess,
+    showAdminQuickAccess:
+      updated?.showAdminQuickAccess ?? (showAdminQuickAccess as boolean | undefined) ?? true,
+    assistantEnabled:
+      updated?.assistantEnabled ?? (assistantEnabled as boolean | undefined) ?? true,
   });
 }, { allowApiKey: false });

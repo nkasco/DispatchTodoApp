@@ -41,6 +41,7 @@ async function resolveApiKeySession(req: Request): Promise<Session | null> {
       role: users.role,
       frozenAt: users.frozenAt,
       showAdminQuickAccess: users.showAdminQuickAccess,
+      assistantEnabled: users.assistantEnabled,
     })
     .from(apiKeys)
     .innerJoin(users, eq(apiKeys.userId, users.id))
@@ -63,6 +64,7 @@ async function resolveApiKeySession(req: Request): Promise<Session | null> {
       role: (result.role as "member" | "admin" | null | undefined) ?? "member",
       isFrozen: Boolean(result.frozenAt),
       showAdminQuickAccess: result.showAdminQuickAccess ?? true,
+      assistantEnabled: result.assistantEnabled ?? true,
     },
     expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   };
@@ -74,7 +76,7 @@ async function resolveApiKeySession(req: Request): Promise<Session | null> {
  * Passes through the route context (contains `params` for dynamic segments).
  */
 export function withAuth<TCtx = unknown>(
-  handler: (req: Request, session: Session, ctx: TCtx) => Promise<NextResponse>,
+  handler: (req: Request, session: Session, ctx: TCtx) => Promise<Response>,
   options: AuthOptions = {}
 ) {
   return async (req: Request, ctx: TCtx) => {
@@ -85,6 +87,7 @@ export function withAuth<TCtx = unknown>(
       session.user.role = session.user.role ?? "member";
       session.user.isFrozen = Boolean(session.user.isFrozen);
       session.user.showAdminQuickAccess = session.user.showAdminQuickAccess ?? true;
+      session.user.assistantEnabled = session.user.assistantEnabled ?? true;
       if (session.user.isFrozen) {
         return errorResponse("Account is frozen", 403);
       }
@@ -97,6 +100,7 @@ export function withAuth<TCtx = unknown>(
         apiKeySession.user.role = apiKeySession.user.role ?? "member";
         apiKeySession.user.isFrozen = Boolean(apiKeySession.user.isFrozen);
         apiKeySession.user.showAdminQuickAccess = apiKeySession.user.showAdminQuickAccess ?? true;
+        apiKeySession.user.assistantEnabled = apiKeySession.user.assistantEnabled ?? true;
         if (apiKeySession.user.isFrozen) {
           return errorResponse("Account is frozen", 403);
         }
@@ -109,7 +113,7 @@ export function withAuth<TCtx = unknown>(
 }
 
 export function withAdminAuth<TCtx = unknown>(
-  handler: (req: Request, session: Session, ctx: TCtx) => Promise<NextResponse>,
+  handler: (req: Request, session: Session, ctx: TCtx) => Promise<Response>,
 ) {
   return withAuth<TCtx>(async (req, session, ctx) => {
     if (session.user?.role !== "admin") {

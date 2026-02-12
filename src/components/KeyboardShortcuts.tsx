@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 interface KeyboardShortcutsProps {
   onSearchOpen: () => void;
@@ -13,6 +14,7 @@ export function KeyboardShortcuts({
   onShortcutHelp,
 }: KeyboardShortcutsProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const lastKeyRef = useRef<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -49,6 +51,18 @@ export function KeyboardShortcuts({
       if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         onShortcutHelp();
+        return;
+      }
+
+      // Alt+A or Ctrl+Shift+A — open Personal Assistant
+      const assistantEnabled = session?.user?.assistantEnabled ?? true;
+      if (
+        assistantEnabled &&
+        ((e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key.toLowerCase() === "a") ||
+          (e.ctrlKey && e.shiftKey && !e.metaKey && e.key.toLowerCase() === "a"))
+      ) {
+        e.preventDefault();
+        router.push("/assistant");
         return;
       }
 
@@ -114,7 +128,7 @@ export function KeyboardShortcuts({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [router, onSearchOpen, onShortcutHelp]);
+  }, [router, onSearchOpen, onShortcutHelp, session?.user?.assistantEnabled]);
 
   return null;
 }

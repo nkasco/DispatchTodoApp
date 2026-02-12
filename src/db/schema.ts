@@ -17,6 +17,9 @@ export const users = sqliteTable("user", {
   showAdminQuickAccess: integer("showAdminQuickAccess", { mode: "boolean" })
     .notNull()
     .default(true),
+  assistantEnabled: integer("assistantEnabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
 });
 
 export const accounts = sqliteTable(
@@ -202,7 +205,87 @@ export const securitySettings = sqliteTable("security_setting", {
   databaseEncryptionEnabled: integer("databaseEncryptionEnabled", { mode: "boolean" })
     .notNull()
     .default(false),
+  shareAiApiKeyWithUsers: integer("shareAiApiKeyWithUsers", { mode: "boolean" })
+    .notNull()
+    .default(false),
   updatedAt: text("updatedAt")
     .notNull()
     .default(sql`(current_timestamp)`),
 });
+
+export const aiConfigs = sqliteTable(
+  "ai_config",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider", {
+      enum: ["openai", "anthropic", "google", "ollama", "lmstudio", "custom"],
+    })
+      .notNull()
+      .default("openai"),
+    apiKey: text("apiKey"),
+    baseUrl: text("baseUrl"),
+    model: text("model").notNull().default("gpt-4o-mini"),
+    isActive: integer("isActive", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("createdAt")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+    updatedAt: text("updatedAt")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("ai_config_userId_idx").on(table.userId),
+    index("ai_config_active_idx").on(table.userId, table.isActive),
+  ]
+);
+
+export const chatConversations = sqliteTable(
+  "chat_conversations",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("New conversation"),
+    createdAt: text("createdAt")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+    updatedAt: text("updatedAt")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("chat_conversation_userId_idx").on(table.userId),
+    index("chat_conversation_updatedAt_idx").on(table.updatedAt),
+  ]
+);
+
+export const chatMessages = sqliteTable(
+  "chat_messages",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: text("conversationId")
+      .notNull()
+      .references(() => chatConversations.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
+    content: text("content").notNull(),
+    model: text("model"),
+    tokenCount: integer("tokenCount"),
+    createdAt: text("createdAt")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("chat_message_conversationId_idx").on(table.conversationId),
+    index("chat_message_createdAt_idx").on(table.createdAt),
+  ]
+);

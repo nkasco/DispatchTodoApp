@@ -221,3 +221,11 @@ export function IconCode({ className = "w-5 h-5" }: { className?: string }) {
     </svg>
   );
 }
+
+export function IconSparkles({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.54-2.54L3.75 12l1.897-.813a4.5 4.5 0 0 0 2.54-2.54L9 6.75l.813 1.897a4.5 4.5 0 0 0 2.54 2.54L14.25 12l-1.897.813a4.5 4.5 0 0 0-2.54 2.54ZM18.259 8.715 18 9.75l-.259-1.035a2.25 2.25 0 0 0-1.456-1.456L15.25 7l1.035-.259a2.25 2.25 0 0 0 1.456-1.456L18 4.25l.259 1.035a2.25 2.25 0 0 0 1.456 1.456L20.75 7l-1.035.259a2.25 2.25 0 0 0-1.456 1.456ZM16.5 20.25h3.75" />
+    </svg>
+  );
+}

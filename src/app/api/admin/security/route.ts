@@ -14,8 +14,21 @@ import {
 import { eq } from "drizzle-orm";
 
 const SETTINGS_ID = 1;
+const SHARE_AI_KEY_COLUMN = "shareAiApiKeyWithUsers";
+
+function ensureAiSharingColumn() {
+  const tableInfo = sqlite.pragma("table_info('security_setting')") as Array<{ name?: string }>;
+  const hasColumn = tableInfo.some((column) => column?.name === SHARE_AI_KEY_COLUMN);
+  if (hasColumn) return;
+
+  sqlite.exec(
+    `ALTER TABLE "security_setting" ADD COLUMN "${SHARE_AI_KEY_COLUMN}" integer NOT NULL DEFAULT 0;`,
+  );
+}
 
 async function ensureSecuritySettingsRow() {
+  ensureAiSharingColumn();
+
   const [existing] = await db
     .select()
     .from(securitySettings)
@@ -29,6 +42,7 @@ async function ensureSecuritySettingsRow() {
     .values({
       id: SETTINGS_ID,
       databaseEncryptionEnabled: false,
+      shareAiApiKeyWithUsers: false,
       updatedAt: new Date().toISOString(),
     })
     .returning();
@@ -43,6 +57,7 @@ export const GET = withAdminAuth(async () => {
 
   return jsonResponse({
     databaseEncryptionEnabled: Boolean(row.databaseEncryptionEnabled),
+    shareAiApiKeyWithUsers: Boolean(row.shareAiApiKeyWithUsers),
     sqlCipherAvailable: isSqlCipherAvailable(sqlite),
     configured: Boolean(fileState.encryptedKey),
     updatedAt: row.updatedAt,
@@ -58,14 +73,39 @@ export const PUT = withAdminAuth(async (req) => {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const { enabled, passphrase } = body as Record<string, unknown>;
-  if (typeof enabled !== "boolean") {
-    return errorResponse("enabled must be a boolean", 400);
+  const { enabled, passphrase, shareAiApiKeyWithUsers } = body as Record<string, unknown>;
+  if (enabled !== undefined && typeof enabled !== "boolean") {
+    return errorResponse("enabled must be a boolean when provided", 400);
+  }
+  if (shareAiApiKeyWithUsers !== undefined && typeof shareAiApiKeyWithUsers !== "boolean") {
+    return errorResponse("shareAiApiKeyWithUsers must be a boolean when provided", 400);
+  }
+  if (enabled === undefined && shareAiApiKeyWithUsers === undefined) {
+    return errorResponse("At least one setting must be provided", 400);
   }
 
   const sqlCipherAvailable = isSqlCipherAvailable(sqlite);
   const now = new Date().toISOString();
+  const current = await ensureSecuritySettingsRow();
   const fileState = readDbEncryptionState();
+
+  if (enabled === undefined) {
+    await db
+      .update(securitySettings)
+      .set({
+        shareAiApiKeyWithUsers: shareAiApiKeyWithUsers as boolean,
+        updatedAt: now,
+      })
+      .where(eq(securitySettings.id, SETTINGS_ID));
+
+    return jsonResponse({
+      databaseEncryptionEnabled: Boolean(current.databaseEncryptionEnabled),
+      shareAiApiKeyWithUsers: Boolean(shareAiApiKeyWithUsers),
+      sqlCipherAvailable,
+      configured: Boolean(fileState.encryptedKey),
+      updatedAt: now,
+    });
+  }
 
   if (enabled) {
     if (!sqlCipherAvailable) {
@@ -99,17 +139,24 @@ export const PUT = withAdminAuth(async (req) => {
       updatedAt: now,
     });
 
-    await ensureSecuritySettingsRow();
     await db
       .update(securitySettings)
       .set({
         databaseEncryptionEnabled: true,
+        shareAiApiKeyWithUsers:
+          shareAiApiKeyWithUsers !== undefined
+            ? (shareAiApiKeyWithUsers as boolean)
+            : Boolean(current.shareAiApiKeyWithUsers),
         updatedAt: now,
       })
       .where(eq(securitySettings.id, SETTINGS_ID));
 
     return jsonResponse({
       databaseEncryptionEnabled: true,
+      shareAiApiKeyWithUsers:
+        shareAiApiKeyWithUsers !== undefined
+          ? (shareAiApiKeyWithUsers as boolean)
+          : Boolean(current.shareAiApiKeyWithUsers),
       sqlCipherAvailable: true,
       configured: true,
       updatedAt: now,
@@ -139,20 +186,26 @@ export const PUT = withAdminAuth(async (req) => {
     updatedAt: now,
   });
 
-  await ensureSecuritySettingsRow();
   await db
     .update(securitySettings)
     .set({
       databaseEncryptionEnabled: false,
+      shareAiApiKeyWithUsers:
+        shareAiApiKeyWithUsers !== undefined
+          ? (shareAiApiKeyWithUsers as boolean)
+          : Boolean(current.shareAiApiKeyWithUsers),
       updatedAt: now,
     })
     .where(eq(securitySettings.id, SETTINGS_ID));
 
   return jsonResponse({
     databaseEncryptionEnabled: false,
+    shareAiApiKeyWithUsers:
+      shareAiApiKeyWithUsers !== undefined
+        ? (shareAiApiKeyWithUsers as boolean)
+        : Boolean(current.shareAiApiKeyWithUsers),
     sqlCipherAvailable,
     configured: false,
     updatedAt: now,
   });
 });
-

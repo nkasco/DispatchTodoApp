@@ -234,46 +234,46 @@ Incorporate a conversational AI assistant into Dispatch, powered by cloud LLM pr
 
 ### 14A — Data Model & Configuration
 
-- [ ] **14.1** Design an `ai_config` table — fields: `id`, `userId`, `provider` (enum: `openai` / `anthropic` / `google` / `ollama` / `lmstudio` / `custom`), `apiKey` (encrypted, nullable — not needed for local models), `baseUrl` (nullable — for custom/local endpoints, e.g. `http://localhost:11434/v1`), `model` (string — e.g. `gpt-4o`, `claude-sonnet-4-5-20250929`, `llama3.2`), `isActive` (boolean, default true), `createdAt`, `updatedAt`. One active config per user.
-- [ ] **14.2** Design a `chat_conversations` table — fields: `id`, `userId`, `title` (auto-generated or user-editable), `createdAt`, `updatedAt`. And a `chat_messages` table — fields: `id`, `conversationId`, `role` (enum: `user` / `assistant` / `system`), `content` (text), `model` (string — which model generated this response), `tokenCount` (nullable integer), `createdAt`.
-- [ ] **14.3** Generate and run the Drizzle migration for `ai_config`, `chat_conversations`, and `chat_messages`.
-- [ ] **14.4** Add a `assistantEnabled` boolean column (default `true`) to the `users` table. This controls whether the Personal Assistant feature is visible in the sidebar and accessible to the user. Generate migration.
+- [x] **14.1** Design an `ai_config` table — fields: `id`, `userId`, `provider` (enum: `openai` / `anthropic` / `google` / `ollama` / `lmstudio` / `custom`), `apiKey` (encrypted, nullable — not needed for local models), `baseUrl` (nullable — for custom/local endpoints, e.g. `http://localhost:11434/v1`), `model` (string — e.g. `gpt-4o`, `claude-sonnet-4-5-20250929`, `llama3.2`), `isActive` (boolean, default true), `createdAt`, `updatedAt`. One active config per user.
+- [x] **14.2** Design a `chat_conversations` table — fields: `id`, `userId`, `title` (auto-generated or user-editable), `createdAt`, `updatedAt`. And a `chat_messages` table — fields: `id`, `conversationId`, `role` (enum: `user` / `assistant` / `system`), `content` (text), `model` (string — which model generated this response), `tokenCount` (nullable integer), `createdAt`.
+- [x] **14.3** Generate and run the Drizzle migration for `ai_config`, `chat_conversations`, and `chat_messages`.
+- [x] **14.4** Add a `assistantEnabled` boolean column (default `true`) to the `users` table. This controls whether the Personal Assistant feature is visible in the sidebar and accessible to the user. Generate migration.
 
 ### 14B — API Key Management & Provider Setup
 
-- [ ] **14.5** Implement `GET /api/ai/config` and `PUT /api/ai/config` — read and update the user's active AI provider configuration. API keys must be encrypted at rest (use AES-256 or similar with `AUTH_SECRET` as the encryption key). The GET endpoint should return a masked key (e.g. `sk-...abc123`), never the raw key.
-- [ ] **14.6** Implement `GET /api/ai/config/test` — validates the current configuration by making a minimal API call (e.g. list models or send a single-token completion) and returns success/failure with an error message if applicable.
-- [ ] **14.7** Implement `GET /api/ai/models` — returns available models for the configured provider. For cloud providers, fetches from the provider's model list API. For Ollama/LM Studio, queries the local `/v1/models` endpoint and returns what's installed.
+- [x] **14.5** Implement `GET /api/ai/config` and `PUT /api/ai/config` — read and update the user's active AI provider configuration. API keys must be encrypted at rest (use AES-256 or similar with `AUTH_SECRET` as the encryption key). The GET endpoint should return a masked key (e.g. `sk-...abc123`), never the raw key.
+- [x] **14.6** Implement `GET /api/ai/config/test` — validates the current configuration by making a minimal API call (e.g. list models or send a single-token completion) and returns success/failure with an error message if applicable.
+- [x] **14.7** Implement `GET /api/ai/models` — returns available models for the configured provider. For cloud providers, fetches from the provider's model list API. For Ollama/LM Studio, queries the local `/v1/models` endpoint and returns what's installed.
 
 ### 14C — Chat API & Streaming
 
-- [ ] **14.8** Install core dependencies: `ai`, `@ai-sdk/react`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/openai-compatible`.
-- [ ] **14.9** Build a provider factory module (`src/lib/ai.ts`) that reads the user's `ai_config` and returns the appropriate AI SDK model instance. For `openai`/`anthropic`/`google`, use the dedicated provider packages. For `ollama`/`lmstudio`/`custom`, use `createOpenAICompatible()` pointed at the configured `baseUrl`.
-- [ ] **14.10** Implement `POST /api/ai/chat` — the streaming chat endpoint. Accepts `{ conversationId, messages }`, loads the user's AI config, calls `streamText()` with the resolved model, and returns `result.toUIMessageStreamResponse()`. Persists the user message and assistant response to `chat_messages` after streaming completes.
-- [ ] **14.11** Implement conversation CRUD: `GET /api/ai/conversations` (list), `POST /api/ai/conversations` (create), `GET /api/ai/conversations/[id]` (get with messages), `DELETE /api/ai/conversations/[id]` (delete conversation and its messages).
+- [x] **14.8** Install core dependencies: `ai`, `@ai-sdk/react`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/openai-compatible`.
+- [x] **14.9** Build a provider factory module (`src/lib/ai.ts`) that reads the user's `ai_config` and returns the appropriate AI SDK model instance. For `openai`/`anthropic`/`google`, use the dedicated provider packages. For `ollama`/`lmstudio`/`custom`, use `createOpenAICompatible()` pointed at the configured `baseUrl`.
+- [x] **14.10** Implement `POST /api/ai/chat` — the streaming chat endpoint. Accepts `{ conversationId, messages }`, loads the user's AI config, calls `streamText()` with the resolved model, and returns `result.toUIMessageStreamResponse()`. Persists the user message and assistant response to `chat_messages` after streaming completes.
+- [x] **14.11** Implement conversation CRUD: `GET /api/ai/conversations` (list), `POST /api/ai/conversations` (create), `GET /api/ai/conversations/[id]` (get with messages), `DELETE /api/ai/conversations/[id]` (delete conversation and its messages).
 
 ### 14D — Personal Assistant UI
 
-- [ ] **14.12** Build the Personal Assistant page (`/assistant`) with a two-panel layout: conversation list sidebar (left) and active chat area (right). Use the `useChat()` hook from `@ai-sdk/react` for streaming message display.
-- [ ] **14.13** Build the chat interface: message bubbles (user right-aligned, assistant left-aligned), markdown rendering for assistant responses (reuse existing markdown rendering from NoteEditor), auto-scroll to newest message, typing/streaming indicator, and an input bar with send button at the bottom.
-- [ ] **14.14** Add conversation management UI: new conversation button, conversation title editing, delete conversation with confirmation, conversation list sorted by most recent activity.
-- [ ] **14.15** Add model/provider indicator in the chat header — show which model is active (e.g. "GPT-4o" or "llama3.2 (local)") with a quick link to settings if no provider is configured.
-- [ ] **14.16** Add the Personal Assistant link to the sidebar, positioned above the Dispatch link. Use a sparkles/brain/chat-bubble icon. Respect the `assistantEnabled` user preference — hide the link entirely when disabled.
-- [ ] **14.17** Add empty state for first-time users who haven't configured an AI provider yet — show a friendly setup prompt with a link to the AI configuration section on the Profile page.
+- [x] **14.12** Build the Personal Assistant page (`/assistant`) with a two-panel layout: conversation list sidebar (left) and active chat area (right). Use the `useChat()` hook from `@ai-sdk/react` for streaming message display.
+- [x] **14.13** Build the chat interface: message bubbles (user right-aligned, assistant left-aligned), markdown rendering for assistant responses (reuse existing markdown rendering from NoteEditor), auto-scroll to newest message, typing/streaming indicator, and an input bar with send button at the bottom.
+- [x] **14.14** Add conversation management UI: new conversation button, conversation title editing, delete conversation with confirmation, conversation list sorted by most recent activity.
+- [x] **14.15** Add model/provider indicator in the chat header — show which model is active (e.g. "GPT-4o" or "llama3.2 (local)") with a quick link to settings if no provider is configured.
+- [x] **14.16** Add the Personal Assistant link to the sidebar, positioned above the Dispatch link. Use a sparkles/brain/chat-bubble icon. Respect the `assistantEnabled` user preference — hide the link entirely when disabled.
+- [x] **14.17** Add empty state for first-time users who haven't configured an AI provider yet — show a friendly setup prompt with a link to the AI configuration section on the Profile page.
 
 ### 14E — Profile Page Integration & Visibility Toggle
 
-- [ ] **14.18** Add an **AI Assistant** settings section to the Profile page (`/profile`). Include: provider selector dropdown (OpenAI / Anthropic / Google Gemini / Ollama / LM Studio / Custom), API key input (password-masked, with show/hide toggle), base URL input (auto-filled for known providers, editable for custom/local), model selector (populated from `GET /api/ai/models` after config is saved), and a "Test Connection" button that calls the test endpoint.
-- [ ] **14.19** Add a **Personal Assistant visibility toggle** to the Profile page (within the AI Assistant settings section or the Preferences section). This toggle updates the `assistantEnabled` field on the user record. When toggled off: the sidebar link is hidden, the `/assistant` page redirects to the dashboard, and the keyboard shortcut (if any) is disabled. Default is **on**.
-- [ ] **14.20** Implement `PUT /api/me` (or extend existing) to accept `assistantEnabled` boolean updates. Update the session/user context so the sidebar can read this preference without an extra API call.
+- [x] **14.18** Add an **AI Assistant** settings section to the Profile page (`/profile`). Include: provider selector dropdown (OpenAI / Anthropic / Google Gemini / Ollama / LM Studio / Custom), API key input (password-masked, with show/hide toggle), base URL input (auto-filled for known providers, editable for custom/local), model selector (populated from `GET /api/ai/models` after config is saved), and a "Test Connection" button that calls the test endpoint.
+- [x] **14.19** Add a **Personal Assistant visibility toggle** to the Profile page (within the AI Assistant settings section or the Preferences section). This toggle updates the `assistantEnabled` field on the user record. When toggled off: the sidebar link is hidden, the `/assistant` page redirects to the dashboard, and the keyboard shortcut (if any) is disabled. Default is **on**.
+- [x] **14.20** Implement `PUT /api/me` (or extend existing) to accept `assistantEnabled` boolean updates. Update the session/user context so the sidebar can read this preference without an extra API call.
 
 ### 14F — Polish & Quality
 
-- [ ] **14.21** Add a keyboard shortcut for opening the Personal Assistant (e.g. `Alt+A` or `Ctrl+Shift+A`), registered in the existing keyboard shortcut system and listed in the shortcut help overlay.
-- [ ] **14.22** Handle error states gracefully: provider not configured, invalid API key, local model server not running (connection refused), rate limits, and network timeouts. Show clear, actionable error messages inline in the chat.
-- [ ] **14.23** Add loading/streaming animations consistent with the Dispatch design system — shimmer skeleton for initial load, animated dots or cursor for streaming responses.
-- [ ] **14.24** Write integration tests for AI config CRUD, conversation CRUD, and the chat endpoint (mock the AI SDK's `streamText` to avoid real API calls in tests).
-- [ ] **14.25** Update `spec.md` to document the Personal Assistant feature, new tables, new API endpoints, and new components. Bump the version to v0.3.0.
+- [x] **14.21** Add a keyboard shortcut for opening the Personal Assistant (e.g. `Alt+A` or `Ctrl+Shift+A`), registered in the existing keyboard shortcut system and listed in the shortcut help overlay.
+- [x] **14.22** Handle error states gracefully: provider not configured, invalid API key, local model server not running (connection refused), rate limits, and network timeouts. Show clear, actionable error messages inline in the chat.
+- [x] **14.23** Add loading/streaming animations consistent with the Dispatch design system — shimmer skeleton for initial load, animated dots or cursor for streaming responses.
+- [x] **14.24** Write integration tests for AI config CRUD, conversation CRUD, and the chat endpoint (mock the AI SDK's `streamText` to avoid real API calls in tests).
+- [x] **14.25** Update `spec.md` to document the Personal Assistant feature, new tables, new API endpoints, and new components. Bump the version to v0.3.0.
 
 ### 14G — MCP Server (Model Context Protocol) for Tool Use
 
@@ -297,18 +297,19 @@ Browser (useChat)  ──>  POST /api/ai/chat  ──>  MCP Client (@ai-sdk/mcp)
                         LLM (any provider)
 ```
 
-- [ ] **14.26** Install MCP dependencies: `@ai-sdk/mcp`, `@modelcontextprotocol/server`, `@modelcontextprotocol/node`. Add `concurrently` and `tsx` as dev dependencies for running the MCP server alongside Next.js.
-- [ ] **14.27** Scaffold the MCP server entry point (`src/mcp-server/index.ts`): create a `McpServer` instance, start a `NodeStreamableHTTPServerTransport` on `process.env.MCP_PORT || 3001`, and add CORS headers for `localhost:3000`. Add `npm run mcp:dev` (tsx watch) and update `npm run dev` to run both Next.js and the MCP server via `concurrently`.
-- [ ] **14.28** Register **task tools** (`src/mcp-server/tools/tasks.ts`): `list-tasks` (with status/priority/project filters), `create-task`, `update-task` (title, description, status, priority, dueDate, projectId), `complete-task` (shorthand to set status=done), `delete-task` (soft-delete). All tools scope queries to the authenticated user's ID.
-- [ ] **14.29** Register **note tools** (`src/mcp-server/tools/notes.ts`): `list-notes` (with title search), `create-note`, `update-note` (title, content), `delete-note` (soft-delete).
-- [ ] **14.30** Register **project tools** (`src/mcp-server/tools/projects.ts`): `list-projects` (with status filter), `create-project`, `update-project` (name, description, status, color), `get-project-tasks` (list tasks within a project).
-- [ ] **14.31** Register **dispatch tools** (`src/mcp-server/tools/dispatches.ts`): `get-today-dispatch` (auto-creates if missing), `update-dispatch-summary`, `link-task-to-dispatch`, `unlink-task-from-dispatch`, `complete-dispatch` (finalize day and roll unfinished tasks).
-- [ ] **14.32** Register a **search tool** (`src/mcp-server/tools/search.ts`): `search` — cross-entity search across tasks, notes, projects, and dispatches using the same LIKE-query logic as `GET /api/search`.
-- [ ] **14.33** Implement user context passing: the chat API route (`POST /api/ai/chat`) must forward the authenticated user's ID to the MCP server so all tool operations are scoped correctly. Use a custom header or include `userId` in the MCP client's request metadata. The MCP server must reject tool calls that lack a valid user context.
-- [ ] **14.34** Update the chat API route to create an `@ai-sdk/mcp` client, call `client.tools()`, and merge the MCP tools into the `streamText()` call. Use `stopWhen: stepCountIs(5)` to cap multi-step tool-calling loops. Add a system prompt instructing the model that it has access to Dispatch tools and should confirm before destructive actions (deletes, completing a dispatch day).
-- [ ] **14.35** Add tool-call UI rendering in the chat interface — when the assistant calls a tool, show an inline indicator (e.g. "Creating task: Buy groceries..." with a spinner, then "Task created" with a link) so the user can see what actions the AI took. Use the AI SDK's `parts` array on messages to detect `tool-invocation` parts.
-- [ ] **14.36** Write tests for the MCP server tools: mock the Drizzle DB, register tools, invoke them via the MCP client SDK, and assert correct DB operations and response formats. Test user-scoping isolation (tools should never return or modify another user's data).
-- [ ] **14.37** Add a health-check indicator for the MCP server connection in the Personal Assistant UI — show a green/red dot or badge indicating whether the tool server is reachable. If unreachable, the assistant still works for conversation but tools are unavailable; show a warning banner explaining this.
+- [x] **14.26** Install MCP dependencies: `@ai-sdk/mcp`, `@modelcontextprotocol/server`, `@modelcontextprotocol/node`. Add `concurrently` and `tsx` as dev dependencies for running the MCP server alongside Next.js.
+- [x] **14.27** Scaffold the MCP server entry point (`src/mcp-server/index.ts`): create a `McpServer` instance, start a `NodeStreamableHTTPServerTransport` on `process.env.MCP_PORT || 3001`, and add CORS headers for `localhost:3000`. Add `npm run mcp:dev` (tsx watch) and update `npm run dev` to run both Next.js and the MCP server via `concurrently`.
+- [x] **14.28** Register **task tools** (`src/mcp-server/tools/tasks.ts`): `list-tasks` (with status/priority/project filters), `create-task`, `update-task` (title, description, status, priority, dueDate, projectId), `complete-task` (shorthand to set status=done), `delete-task` (soft-delete). All tools scope queries to the authenticated user's ID.
+- [x] **14.29** Register **note tools** (`src/mcp-server/tools/notes.ts`): `list-notes` (with title search), `create-note`, `update-note` (title, content), `delete-note` (soft-delete).
+- [x] **14.30** Register **project tools** (`src/mcp-server/tools/projects.ts`): `list-projects` (with status filter), `create-project`, `update-project` (name, description, status, color), `get-project-tasks` (list tasks within a project).
+- [x] **14.31** Register **dispatch tools** (`src/mcp-server/tools/dispatches.ts`): `get-today-dispatch` (auto-creates if missing), `update-dispatch-summary`, `link-task-to-dispatch`, `unlink-task-from-dispatch`, `complete-dispatch` (finalize day and roll unfinished tasks).
+- [x] **14.32** Register a **search tool** (`src/mcp-server/tools/search.ts`): `search` — cross-entity search across tasks, notes, projects, and dispatches using the same LIKE-query logic as `GET /api/search`.
+- [x] **14.33** Implement user context passing: the chat API route (`POST /api/ai/chat`) must forward the authenticated user's ID to the MCP server so all tool operations are scoped correctly. Use a custom header or include `userId` in the MCP client's request metadata. The MCP server must reject tool calls that lack a valid user context.
+- [x] **14.34** Update the chat API route to create an `@ai-sdk/mcp` client, call `client.tools()`, and merge the MCP tools into the `streamText()` call. Use `stopWhen: stepCountIs(5)` to cap multi-step tool-calling loops. Add a system prompt instructing the model that it has access to Dispatch tools and should confirm before destructive actions (deletes, completing a dispatch day).
+- [x] **14.35** Add tool-call UI rendering in the chat interface — when the assistant calls a tool, show an inline indicator (e.g. "Creating task: Buy groceries..." with a spinner, then "Task created" with a link) so the user can see what actions the AI took. Use the AI SDK's `parts` array on messages to detect `tool-invocation` parts.
+- [x] **14.36** Write tests for the MCP server tools: mock the Drizzle DB, register tools, invoke them via the MCP client SDK, and assert correct DB operations and response formats. Test user-scoping isolation (tools should never return or modify another user's data).
+- [x] **14.37** Add a health-check indicator for the MCP server connection in the Personal Assistant UI — show a green/red dot or badge indicating whether the tool server is reachable. If unreachable, the assistant still works for conversation but tools are unavailable; show a warning banner explaining this.
 
 Phase 15 - Multi-Device Optimizations
 - [ ] **15.1** Validate and improve responsive behavior for iPhone-sized screens, iPad/tablet breakpoints, and smaller desktop windows.
+

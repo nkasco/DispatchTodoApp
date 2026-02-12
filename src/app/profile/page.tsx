@@ -35,7 +35,11 @@ export default async function Profile() {
       .where(eq(tasks.userId, userId)),
     db.select({ provider: accounts.provider }).from(accounts).where(eq(accounts.userId, userId)),
     db
-      .select({ role: users.role, showAdminQuickAccess: users.showAdminQuickAccess })
+      .select({
+        role: users.role,
+        showAdminQuickAccess: users.showAdminQuickAccess,
+        assistantEnabled: users.assistantEnabled,
+      })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1),
@@ -45,6 +49,7 @@ export default async function Profile() {
   const completionPercent = taskCount > 0 ? Math.round(((doneCount ?? 0) / taskCount) * 100) : 0;
   const isAdmin = currentUserRecord?.role === "admin";
   const showAdminQuickAccess = currentUserRecord?.showAdminQuickAccess ?? true;
+  const assistantEnabled = currentUserRecord?.assistantEnabled ?? true;
 
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-6 animate-fade-in-up">
@@ -106,7 +111,11 @@ export default async function Profile() {
         <StatCard label="Dispatches" value={dispatchCount} color="yellow" />
       </section>
 
-      <ProfilePreferences isAdmin={isAdmin} showAdminQuickAccess={showAdminQuickAccess} />
+      <ProfilePreferences
+        isAdmin={isAdmin}
+        showAdminQuickAccess={showAdminQuickAccess}
+        assistantEnabled={assistantEnabled}
+      />
 
       {isAdmin && (
         <section className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 via-white to-yellow-50 dark:from-amber-950/30 dark:via-neutral-900 dark:to-yellow-950/20 p-6 shadow-sm">

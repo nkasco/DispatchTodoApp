@@ -35,6 +35,7 @@
 - `Projects`: progress rollups and scoped task lists.
 - `Notes`: markdown editing, preview, and export.
 - `Dispatch`: daily planning surface with rollover support.
+- `Personal Assistant (Beta)`: streaming AI chat powered by Vercel AI SDK, with in-app actions via a local MCP (Model Context Protocol) tool server.
 - `Search`: global search across tasks, notes, and dispatch records.
 - `Recycle Bin`: restore or permanently remove archived items.
 - `Auth`: GitHub OAuth and local development credentials.
@@ -131,6 +132,10 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+`npm run dev` starts both services:
+- Next.js app on `http://localhost:3000`
+- Dispatch MCP server on `http://localhost:3001` (used by Personal Assistant tool calling)
 
 ### Dev Login (Optional)
 

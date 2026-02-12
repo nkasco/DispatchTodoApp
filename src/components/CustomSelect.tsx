@@ -13,9 +13,10 @@ interface CustomSelectProps {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
+  disabled?: boolean;
 }
 
-export function CustomSelect({ label, value, onChange, options }: CustomSelectProps) {
+export function CustomSelect({ label, value, onChange, options, disabled = false }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -34,6 +35,8 @@ export function CustomSelect({ label, value, onChange, options }: CustomSelectPr
   }, [open]);
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (disabled) return;
+
     if (e.key === "Escape") {
       setOpen(false);
     } else if (e.key === "Enter" || e.key === " ") {
@@ -57,9 +60,13 @@ export function CustomSelect({ label, value, onChange, options }: CustomSelectPr
       </label>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (disabled) return;
+          setOpen(!open);
+        }}
         onKeyDown={handleKeyDown}
-        className="flex w-full items-center gap-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white text-left hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+        disabled={disabled}
+        className="flex w-full items-center gap-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white text-left hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {selected?.dot && (
           <span className={`block h-2 w-2 rounded-full flex-shrink-0 ${selected.dot}`} />
@@ -70,8 +77,8 @@ export function CustomSelect({ label, value, onChange, options }: CustomSelectPr
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute z-10 mt-1 w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg overflow-hidden animate-fade-in-up" style={{ animationDuration: "0.15s" }}>
+      {open && !disabled && (
+        <div className="absolute z-10 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg animate-fade-in-up" style={{ animationDuration: "0.15s" }}>
           {options.map((option) => (
             <button
               key={option.value}

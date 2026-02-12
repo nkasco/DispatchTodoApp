@@ -22,7 +22,8 @@ export function createTestDb() {
       "password" text,
       "role" text NOT NULL DEFAULT 'member',
       "frozenAt" text,
-      "showAdminQuickAccess" integer NOT NULL DEFAULT 1
+      "showAdminQuickAccess" integer NOT NULL DEFAULT 1,
+      "assistantEnabled" integer NOT NULL DEFAULT 1
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS "user_email_unique" ON "user" ("email");
@@ -129,8 +130,48 @@ export function createTestDb() {
     CREATE TABLE "security_setting" (
       "id" integer PRIMARY KEY NOT NULL DEFAULT 1,
       "databaseEncryptionEnabled" integer NOT NULL DEFAULT 0,
+      "shareAiApiKeyWithUsers" integer NOT NULL DEFAULT 0,
       "updatedAt" text NOT NULL DEFAULT (current_timestamp)
     );
+
+    CREATE TABLE "ai_config" (
+      "id" text PRIMARY KEY NOT NULL,
+      "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+      "provider" text NOT NULL DEFAULT 'openai',
+      "apiKey" text,
+      "baseUrl" text,
+      "model" text NOT NULL DEFAULT 'gpt-4o-mini',
+      "isActive" integer NOT NULL DEFAULT 1,
+      "createdAt" text NOT NULL DEFAULT (current_timestamp),
+      "updatedAt" text NOT NULL DEFAULT (current_timestamp)
+    );
+
+    CREATE INDEX "ai_config_userId_idx" ON "ai_config" ("userId");
+    CREATE INDEX "ai_config_active_idx" ON "ai_config" ("userId", "isActive");
+
+    CREATE TABLE "chat_conversations" (
+      "id" text PRIMARY KEY NOT NULL,
+      "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+      "title" text NOT NULL DEFAULT 'New conversation',
+      "createdAt" text NOT NULL DEFAULT (current_timestamp),
+      "updatedAt" text NOT NULL DEFAULT (current_timestamp)
+    );
+
+    CREATE INDEX "chat_conversation_userId_idx" ON "chat_conversations" ("userId");
+    CREATE INDEX "chat_conversation_updatedAt_idx" ON "chat_conversations" ("updatedAt");
+
+    CREATE TABLE "chat_messages" (
+      "id" text PRIMARY KEY NOT NULL,
+      "conversationId" text NOT NULL REFERENCES "chat_conversations"("id") ON DELETE CASCADE,
+      "role" text NOT NULL,
+      "content" text NOT NULL,
+      "model" text,
+      "tokenCount" integer,
+      "createdAt" text NOT NULL DEFAULT (current_timestamp)
+    );
+
+    CREATE INDEX "chat_message_conversationId_idx" ON "chat_messages" ("conversationId");
+    CREATE INDEX "chat_message_createdAt_idx" ON "chat_messages" ("createdAt");
   `);
 
   return { db, sqlite };

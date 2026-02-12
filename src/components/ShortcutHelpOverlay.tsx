@@ -11,6 +11,8 @@ const SHORTCUTS = [
   { keys: ["/"], description: "Open search" },
   { keys: ["g", "h"], description: "Go to Dashboard" },
   { keys: ["g", "d"], description: "Go to Dispatch" },
+  { keys: ["Alt", "A"], description: "Open Personal Assistant" },
+  { keys: ["Ctrl", "Shift", "A"], description: "Open Personal Assistant" },
   { keys: ["g", "i"], description: "Go to Insights" },
   { keys: ["g", "t"], description: "Go to Tasks" },
   { keys: ["g", "n"], description: "Go to Notes" },

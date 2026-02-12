@@ -9,6 +9,7 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 - **Local-first**: Runs on `localhost`, data stays on disk in a SQLite file. No cloud dependency for data storage.
 - **Single user, authenticated**: OAuth2 login (GitHub) and local credentials gate access. Even though it's local, auth prevents accidental exposure if the port is reachable on the network.
 - **REST API driven**: The UI is a React SPA that communicates with Next.js API Route Handlers over standard REST (JSON request/response). No GraphQL.
+- **Actionable assistant**: Personal Assistant chat can invoke app actions through a local MCP (Model Context Protocol) server.
 - **Simple and fast**: SQLite for zero-ops persistence. No external database server to manage.
 
 ## Tech Stack
@@ -21,6 +22,7 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 | Database       | SQLite via better-sqlite3                  |
 | ORM            | Drizzle ORM 0.45                           |
 | Authentication | NextAuth.js v5-beta (OAuth2 + Credentials) |
+| AI             | Vercel AI SDK (`ai`, `@ai-sdk/*`) + MCP    |
 | Runtime        | Node.js                                    |
 | Testing        | Vitest 4.0                                 |
 
@@ -40,7 +42,7 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 ## Data Model
 
 ### Auth Tables
-- **users** — `id`, `name`, `email` (unique), `emailVerified`, `image`, `password`, `role` (`member`/`admin`), `frozenAt?`. Supports both OAuth (image from provider) and credentials (password hash).
+- **users** — `id`, `name`, `email` (unique), `emailVerified`, `image`, `password`, `role` (`member`/`admin`), `frozenAt?`, `showAdminQuickAccess`, `assistantEnabled`. Supports both OAuth (image from provider) and credentials (password hash).
 - **accounts** — OAuth provider link records. Composite PK on `provider` + `providerAccountId`.
 - **sessions** — Session token tracking with expiry.
 
@@ -52,6 +54,9 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 - **dispatchTasks** — `dispatchId`, `taskId`. Composite PK join table.
 - **apiKeys** — `id`, `userId`, `name`, `key` (unique), `lastUsedAt?`, `createdAt`.
 - **securitySettings** — singleton app-level security flags including `databaseEncryptionEnabled`.
+- **aiConfigs** (`ai_config`) — `id`, `userId`, `provider`, `apiKey` (encrypted), `baseUrl?`, `model`, `isActive`, `createdAt`, `updatedAt`.
+- **chatConversations** (`chat_conversations`) — `id`, `userId`, `title`, `createdAt`, `updatedAt`.
+- **chatMessages** (`chat_messages`) — `id`, `conversationId`, `role`, `content`, `model?`, `tokenCount?`, `createdAt`.
 
 ### Soft-Delete & Recycle Bin
 - Tasks, notes, and projects use soft-delete: `DELETE` sets a `deletedAt` timestamp instead of removing the row.
@@ -83,8 +88,20 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 | API Keys    | `/api/api-keys`        | `/api/api-keys/[id]`        | Key management for programmatic access                    |
 | Admin Users | `/api/admin/users`     | `/api/admin/users/[id]`     | Admin user creation, deletion, freeze, role/password actions |
 | Admin Security | `/api/admin/security` | --                        | Admin database encryption settings                        |
+| AI Config   | `/api/ai/config`       | --                          | `/api/ai/config/test`, `/api/ai/models`                  |
+| AI Chat     | `/api/ai/chat`         | --                          | Streaming assistant endpoint                              |
+| AI Conversations | `/api/ai/conversations` | `/api/ai/conversations/[id]` | Create/list/get/update/delete conversations              |
+| MCP Health  | `/api/ai/mcp/health`   | --                          | MCP server reachability indicator                         |
 | Auth        | `/api/auth/[...nextauth]` | --                       | NextAuth.js catch-all                                     |
 | Register    | `/api/auth/register`   | --                          | POST email/password registration                          |
+
+## Personal Assistant (Beta) + MCP
+
+- Personal Assistant is available at `/assistant` with streaming chat (`/api/ai/chat`) and conversation history (`/api/ai/conversations`).
+- Dispatch uses a local MCP (Model Context Protocol) server (`src/mcp-server/index.ts`) to expose first-party tools to the model.
+- MCP tools cover tasks, notes, projects, dispatches, and cross-entity search (`src/mcp-server/tools/*`).
+- Chat requests pass authenticated user context to MCP via `x-dispatch-user-id`, and MCP tools require this header for scoped access.
+- MCP connectivity is surfaced to users through `/api/ai/mcp/health` and an online/offline indicator in the Assistant UI.
 
 ## File Structure
 
@@ -99,6 +116,7 @@ src/
     notes/page.tsx                  # Notes list
     notes/[id]/page.tsx             # Note editor
     dispatch/page.tsx               # Daily dispatch
+    assistant/page.tsx              # Personal Assistant
     projects/page.tsx               # Projects list
     inbox/page.tsx                  # Priority inbox
     recycle-bin/page.tsx            # Recycle bin
@@ -122,6 +140,7 @@ src/
     NoteEditor.tsx                  # Markdown note editor with formatting toolbar
     RecycleBinPage.tsx              # Recycle bin: restore, permanent delete, retention timers
     ProfilePreferences.tsx          # Theme toggle, API key management, sign-out
+    AssistantPage.tsx               # Personal Assistant chat UI + conversation manager
     AdminSettingsPanel.tsx          # Admin-only control plane in Profile
     IntegrationsPage.tsx            # API docs with curl/fetch/PowerShell code generation
     SearchOverlay.tsx               # Global search overlay (Ctrl+K) with debounced cross-entity results
@@ -137,8 +156,13 @@ src/
   lib/
     api.ts                          # withAuth, withAdminAuth, getApiKeyFromRequest, resolveApiKeySession, jsonResponse, errorResponse
     client.ts                       # Typed API client with all resource methods + type exports
+    ai.ts                           # AI config/model/provider helpers + model factory
+    ai-encryption.ts                # AES-GCM API key encryption helpers
     projects.ts                     # PROJECT_COLORS config, PROJECT_COLOR_OPTIONS, PROJECT_STATUS_OPTIONS
     pagination.ts                   # parsePagination, paginatedResponse helpers
+  mcp-server/
+    index.ts                        # Standalone MCP HTTP server entrypoint
+    tools/                          # Dispatch action tools: tasks, notes, projects, dispatches, search
   db/
     schema.ts                       # All Drizzle table definitions + indexes
     index.ts                        # Database client singleton (better-sqlite3)
@@ -174,6 +198,7 @@ src/
 - `n n` — New note
 - `g h` — Go to dashboard
 - `g d` — Go to dispatch
+- `Alt+A` (or `Ctrl+Shift+A`) — Open Personal Assistant (when enabled)
 - `g t` — Go to tasks
 - `?` — Show shortcut help overlay
 
@@ -187,6 +212,7 @@ src/
 ## Hosting
 
 - Runs locally via `npm run dev` during development.
+- `npm run dev` runs both Next.js and the MCP server concurrently.
 - Production mode via `npm run build && npm run start` for a more optimized local server.
 - No deployment target — this is a personal localhost application.
 - App version exposed via `NEXT_PUBLIC_APP_VERSION` from package.json.

@@ -9,6 +9,7 @@ type MockSession = {
     role?: "member" | "admin";
     isFrozen?: boolean;
     showAdminQuickAccess?: boolean;
+    assistantEnabled?: boolean;
   };
 } | null;
 
