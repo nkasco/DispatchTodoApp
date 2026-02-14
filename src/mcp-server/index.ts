@@ -12,7 +12,7 @@ const ALLOWED_ORIGINS = new Set(["http://localhost:3000", "http://127.0.0.1:3000
 
 function createDispatchMcpServer() {
   const server = new McpServer(
-    { name: "dispatch-mcp-server", version: "0.3.0" },
+    { name: "dispatch-mcp-server", version: "0.4.0" },
     { capabilities: { logging: {} } },
   );
 

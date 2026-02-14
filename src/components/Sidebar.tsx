@@ -60,7 +60,7 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.0";
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.4.0";
 
   const defaultSectionsOpen = useMemo(
     () => ({

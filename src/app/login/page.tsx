@@ -16,7 +16,7 @@ export default async function LoginPage({
 
   const { error } = await searchParams;
   const hasGitHub = !!(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
-  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.0";
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.4.0";
 
   const errorMessages: Record<string, string> = {
     OAuthAccountNotLinked: "This GitHub account is already linked to a different user.",
