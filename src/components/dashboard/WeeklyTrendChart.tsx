@@ -55,8 +55,8 @@ export function WeeklyTrendChart({ points }: WeeklyTrendChartProps) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="h-48 rounded-xl border border-neutral-200/80 bg-white/70 p-3 dark:border-neutral-700/80 dark:bg-neutral-800/40">
+    <div className="space-y-2.5">
+      <div className="h-36 rounded-xl border border-neutral-200/80 bg-white/70 p-2.5 dark:border-neutral-700/80 dark:bg-neutral-800/40">
         <svg viewBox="0 0 100 100" className="h-full w-full overflow-visible">
           {points.map((point, index) => {
             const x = points.length > 1 ? (index / (points.length - 1)) * 100 : 50;
@@ -70,8 +70,7 @@ export function WeeklyTrendChart({ points }: WeeklyTrendChartProps) {
                 width={2.5}
                 height={barHeight}
                 rx={0.8}
-                className="fill-cyan-400/70 dark:fill-cyan-500/45 animate-bar-grow"
-                style={{ animationDelay: `${index * 65}ms` }}
+                className="fill-cyan-400/70 dark:fill-cyan-500/45"
               />
             );
           })}
@@ -98,12 +97,12 @@ export function WeeklyTrendChart({ points }: WeeklyTrendChartProps) {
           })}
         </svg>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
         {points.map((point) => (
           <span key={`${point.dateKey}-label`}>{toWeekdayLabel(point.dateKey)}</span>
         ))}
       </div>
-      <div className="flex items-center justify-end gap-4 text-[11px] text-neutral-500 dark:text-neutral-400">
+      <div className="flex items-center justify-end gap-3 text-[10px] text-neutral-500 dark:text-neutral-400">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-cyan-400 dark:bg-cyan-500" />
           Created

@@ -56,7 +56,7 @@ export function DashboardCustomizePanel({
   return (
     <div
       ref={containerRef}
-      className="absolute right-0 top-12 z-30 w-[min(92vw,24rem)] rounded-2xl border border-neutral-200/80 bg-white/95 p-4 shadow-2xl backdrop-blur-md dark:border-neutral-700/80 dark:bg-neutral-900/90"
+      className="absolute right-0 top-12 z-30 w-[min(92vw,24rem)] rounded-2xl border border-neutral-200/80 bg-white/95 p-4 shadow-xl dark:border-neutral-700/80 dark:bg-neutral-900/90"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>

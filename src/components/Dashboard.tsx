@@ -150,7 +150,7 @@ export function Dashboard({ userName }: { userName: string }) {
   const upcoming = tasks
     .filter((task) => task.dueDate && task.dueDate > today && task.status !== "done")
     .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
-    .slice(0, 5);
+    .slice(0, 4);
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 7);
@@ -160,7 +160,7 @@ export function Dashboard({ userName }: { userName: string }) {
 
   const recentNotes = [...notes]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 5);
+    .slice(0, 4);
 
   const recentActivity: ActivityItem[] = [
     ...tasks.map((task) => ({
@@ -312,7 +312,7 @@ export function Dashboard({ userName }: { userName: string }) {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}
-              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200/80 bg-white/70 px-3.5 py-2 text-sm text-neutral-700 shadow-sm transition hover:-translate-y-px hover:bg-white dark:border-neutral-700/80 dark:bg-neutral-800/50 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200/80 bg-white/70 px-3.5 py-2 text-sm text-neutral-700 shadow-sm transition-colors hover:bg-white dark:border-neutral-700/80 dark:bg-neutral-800/50 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               <IconSearch className="h-4 w-4" />
               <span>Search</span>
@@ -322,7 +322,7 @@ export function Dashboard({ userName }: { userName: string }) {
               type="button"
               onClick={() => setCustomizeOpen((current) => !current)}
               disabled={!isReady}
-              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200/80 bg-white/70 px-3.5 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:-translate-y-px hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700/80 dark:bg-neutral-800/50 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200/80 bg-white/70 px-3.5 py-2 text-sm font-medium text-neutral-700 shadow-sm transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700/80 dark:bg-neutral-800/50 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               <IconCog className="h-4 w-4" />
               Customize
@@ -340,7 +340,7 @@ export function Dashboard({ userName }: { userName: string }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
           {visibleWidgets.map((widget) => (
-            <div key={widget.id} className={WIDGET_SPAN_CLASSES[widget.id]}>
+            <div key={widget.id} className={`${WIDGET_SPAN_CLASSES[widget.id]} h-full`}>
               <DashboardWidget widgetId={widget.id} data={widgetData} />
             </div>
           ))}
@@ -362,9 +362,8 @@ function DashboardWidget({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Link
             href="/tasks"
-            className="dashboard-card dashboard-hero-gradient md:col-span-2 group relative overflow-hidden p-5 text-white transition hover:-translate-y-px"
+            className="dashboard-card dashboard-card-interactive dashboard-hero-gradient h-full md:col-span-2 group relative overflow-hidden p-5 text-white"
           >
-            <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
             <div className="relative flex h-full flex-col justify-between gap-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.14em] text-cyan-100/90">
@@ -375,7 +374,7 @@ function DashboardWidget({
                   {data.openCount} open - {data.inProgressCount} in progress
                 </p>
               </div>
-              <div className="rounded-xl bg-white/10 p-2.5 backdrop-blur-sm">
+              <div className="rounded-xl bg-white/15 p-2.5">
                 <div className="mb-1 text-[11px] uppercase tracking-[0.12em] text-cyan-100/80">
                   Recent task activity
                 </div>
@@ -397,7 +396,7 @@ function DashboardWidget({
             </div>
           </Link>
 
-          <Link href="/notes" className="dashboard-card p-4 transition hover:-translate-y-px">
+          <Link href="/notes" className="dashboard-card dashboard-card-interactive h-full p-4">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-xs uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">
@@ -416,7 +415,7 @@ function DashboardWidget({
             </div>
           </Link>
 
-          <Link href="/dispatch" className="dashboard-card p-4 transition hover:-translate-y-px">
+          <Link href="/dispatch" className="dashboard-card dashboard-card-interactive h-full p-4">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-xs uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">
@@ -438,15 +437,15 @@ function DashboardWidget({
       );
     case "task-donut":
       return (
-        <section className="dashboard-card p-5">
-          <div className="mb-4 flex items-start justify-between gap-3">
+        <section className="dashboard-card dashboard-card-interactive h-full p-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Deadline Focus</h2>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{data.focusSubtext}</p>
             </div>
             <FocusRing percent={data.focusPercent} toneClass={data.focusTone} label={data.focusLabel} />
           </div>
-          <div className="mb-4 rounded-xl border border-neutral-200/80 bg-white/65 px-3 py-2 dark:border-neutral-700/80 dark:bg-neutral-800/35">
+          <div className="mb-3 rounded-xl border border-neutral-200/80 bg-white/65 px-3 py-2 dark:border-neutral-700/80 dark:bg-neutral-800/35">
             <p className="text-xs uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400">Completion window</p>
             <p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{data.focusHeadline}</p>
           </div>
@@ -455,7 +454,7 @@ function DashboardWidget({
             inProgressCount={data.inProgressCount}
             doneCount={data.doneCount}
           />
-          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+          <div className="mt-2.5 grid grid-cols-3 gap-2 text-xs">
             <StatPill label="Overdue" value={data.overdueCount} color="red" />
             <StatPill label="Today" value={data.dueTodayCount} color="amber" />
             <StatPill label="Soon" value={data.dueSoonCount} color="emerald" />
@@ -464,8 +463,8 @@ function DashboardWidget({
       );
     case "weekly-trend":
       return (
-        <section className="dashboard-card p-5">
-          <div className="mb-4 flex items-center justify-between gap-2">
+        <section className="dashboard-card dashboard-card-interactive h-full p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Weekly Trend</h2>
             <span className="text-xs text-neutral-500 dark:text-neutral-400">7 days</span>
           </div>
@@ -474,7 +473,7 @@ function DashboardWidget({
       );
     case "priority-dist":
       return (
-        <section className="dashboard-card p-5">
+        <section className="dashboard-card dashboard-card-interactive h-full p-5">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Priority Distribution</h2>
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Active tasks by urgency.</p>
@@ -488,7 +487,7 @@ function DashboardWidget({
       );
     case "project-rings":
       return (
-        <section className="dashboard-card p-5">
+        <section className="dashboard-card dashboard-card-interactive h-full p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Project Rings</h2>
             <Link href="/projects" className="text-xs text-cyan-700 hover:underline dark:text-cyan-300">Projects</Link>
@@ -506,8 +505,8 @@ function DashboardWidget({
       );
     case "project-signals":
       return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <section className="dashboard-card p-4">
+        <div className="grid h-full grid-cols-1 lg:grid-cols-2 gap-4">
+          <section className="dashboard-card dashboard-card-interactive h-full p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Active Projects</h2>
               <Link href="/projects" className="text-xs text-cyan-700 hover:underline dark:text-cyan-300">View all</Link>
@@ -520,7 +519,7 @@ function DashboardWidget({
                   const color = PROJECT_COLORS[project.color]?.dot ?? "bg-blue-500";
                   const percent = project.stats.total > 0 ? Math.round((project.stats.done / project.stats.total) * 100) : 0;
                   return (
-                    <div key={project.id} className="space-y-1 rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2 dark:border-neutral-700/80 dark:bg-neutral-800/35">
+                    <div key={project.id} className="space-y-1 rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2 transition-colors hover:bg-white/95 dark:border-neutral-700/80 dark:bg-neutral-800/35 dark:hover:bg-neutral-800/55">
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <div className="inline-flex min-w-0 items-center gap-2">
                           <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
@@ -538,7 +537,7 @@ function DashboardWidget({
             )}
           </section>
 
-          <section className="dashboard-card p-4">
+          <section className="dashboard-card dashboard-card-interactive h-full p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Project Activity</h2>
               <Link href="/projects" className="text-xs text-cyan-700 hover:underline dark:text-cyan-300">Projects</Link>
@@ -548,7 +547,7 @@ function DashboardWidget({
             ) : (
               <div className="space-y-1.5">
                 {data.recentProjectActivity.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2 text-xs dark:border-neutral-700/80 dark:bg-neutral-800/35">
+                  <div key={item.id} className="rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2 text-xs transition-colors hover:bg-white/95 dark:border-neutral-700/80 dark:bg-neutral-800/35 dark:hover:bg-neutral-800/55">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-neutral-500 dark:text-neutral-400">{item.projectName}</p>
@@ -568,7 +567,7 @@ function DashboardWidget({
       );
     case "upcoming":
       return (
-        <section className="dashboard-card p-5">
+        <section className="dashboard-card dashboard-card-interactive h-full p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Upcoming Deadlines</h2>
             <Link href="/tasks" className="text-xs text-cyan-700 hover:underline dark:text-cyan-300">Tasks</Link>
@@ -588,7 +587,7 @@ function DashboardWidget({
       );
     case "recent-notes":
       return (
-        <section className="dashboard-card p-5">
+        <section className="dashboard-card dashboard-card-interactive h-full p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Recent Notes</h2>
             <Link href="/notes" className="text-xs text-cyan-700 hover:underline dark:text-cyan-300">Notes</Link>
@@ -603,7 +602,7 @@ function DashboardWidget({
                 <Link
                   key={note.id}
                   href={`/notes/${note.id}`}
-                  className="block rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2.5 transition hover:-translate-y-px hover:bg-white dark:border-neutral-700/80 dark:bg-neutral-800/35 dark:hover:bg-neutral-800/50"
+                  className="block rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2.5 transition-colors hover:bg-white/95 dark:border-neutral-700/80 dark:bg-neutral-800/35 dark:hover:bg-neutral-800/55"
                 >
                   <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">{note.title}</p>
                   <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{new Date(note.updatedAt).toLocaleDateString()}</p>
@@ -615,7 +614,7 @@ function DashboardWidget({
       );
     case "recent-activity":
       return (
-        <section className="dashboard-card p-5">
+        <section className="dashboard-card dashboard-card-interactive h-full p-5">
           <div className="mb-3">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Recent Activity</h2>
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Task and note updates across your workspace.</p>
@@ -641,7 +640,7 @@ function ActivityCard({
   items: ActivityItem[];
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200/70 bg-white/70 p-3 dark:border-neutral-700/80 dark:bg-neutral-800/35">
+    <div className="h-full rounded-xl border border-neutral-200/70 bg-white/70 p-3 dark:border-neutral-700/80 dark:bg-neutral-800/35">
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400">{title}</h3>
       {items.length === 0 ? (
         <p className="text-xs text-neutral-500 dark:text-neutral-400">{emptyMessage}</p>
@@ -664,7 +663,7 @@ function ActivityCard({
                   : "Updated task";
 
             return (
-              <li key={item.id} className="rounded-lg border border-neutral-200/70 bg-neutral-50/80 px-2.5 py-2 dark:border-neutral-700/80 dark:bg-neutral-900/55">
+              <li key={item.id} className="rounded-lg border border-neutral-200/70 bg-neutral-50/80 px-2.5 py-2 transition-colors hover:bg-neutral-50 dark:border-neutral-700/80 dark:bg-neutral-900/55 dark:hover:bg-neutral-900/75">
                 <div className="flex items-start gap-2">
                   <span className={`mt-1.5 h-2 w-2 rounded-full ${dotClass}`} />
                   <div className="min-w-0 flex-1">
@@ -699,7 +698,7 @@ function FocusRing({
   const offset = circumference - (percent / 100) * circumference;
 
   return (
-    <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90 flex-shrink-0">
+    <svg width="48" height="48" viewBox="0 0 56 56" className="-rotate-90 flex-shrink-0">
       <circle cx="28" cy="28" r={radius} fill="none" strokeWidth="5" className="stroke-neutral-200 dark:stroke-neutral-700" />
       <circle
         cx="28"
@@ -708,7 +707,7 @@ function FocusRing({
         fill="none"
         strokeWidth="5"
         strokeLinecap="round"
-        className={`transition-all duration-500 ${toneClass}`}
+        className={toneClass}
         stroke="currentColor"
         strokeDasharray={circumference}
         strokeDashoffset={offset}
@@ -751,7 +750,7 @@ function StatPill({
 function DueItem({ task, index }: { task: Task; index: number }) {
   return (
     <div
-      className={`rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2 dark:border-neutral-700/80 dark:bg-neutral-800/35 ${
+      className={`rounded-xl border border-neutral-200/70 bg-white/70 px-3 py-2 transition-colors hover:bg-white/95 dark:border-neutral-700/80 dark:bg-neutral-800/35 dark:hover:bg-neutral-800/55 ${
         index > 0 ? "mt-2" : ""
       }`}
     >

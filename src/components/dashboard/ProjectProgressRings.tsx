@@ -1,6 +1,4 @@
 "use client";
-
-import type { CSSProperties } from "react";
 import { PROJECT_COLORS } from "@/lib/projects";
 
 type ProjectRingItem = {
@@ -68,16 +66,8 @@ export function ProjectProgressRings({ projects }: ProjectProgressRingsProps) {
                   fill="none"
                   strokeWidth="7"
                   strokeLinecap="round"
-                  className="animate-donut-fill"
                   stroke={ringColor}
                   strokeDasharray={`${dash} ${Math.max(circumference - dash, 0)}`}
-                  style={
-                    {
-                      ["--dash-final" as string]: `${dash}`,
-                      ["--dash-gap" as string]: `${Math.max(circumference - dash, 0)}`,
-                      animationDelay: `${index * 90}ms`,
-                    } as CSSProperties
-                  }
                 />
               </g>
             );
