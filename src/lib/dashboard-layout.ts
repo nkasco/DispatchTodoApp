@@ -29,7 +29,7 @@ type StoredDashboardLayout = {
 
 const STORAGE_KEY = "dispatch.dashboard.layout.v2";
 
-export const DASHBOARD_WIDGET_REGISTRY: DashboardWidgetDefinition[] = [
+const DASHBOARD_WIDGET_REGISTRY: DashboardWidgetDefinition[] = [
   {
     id: "hero-stats",
     label: "Hero + Quick Stats",

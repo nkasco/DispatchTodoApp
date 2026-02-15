@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type Database from "better-sqlite3";
 
-export type DbEncryptionState = {
+type DbEncryptionState = {
   enabled: boolean;
   encryptedKey: string | null;
   updatedAt: string;
@@ -112,7 +112,7 @@ export function decryptDbPassphrase(payload: string): string {
   return decrypted.toString("utf8");
 }
 
-export function resolveDbPassphrase(state: DbEncryptionState): string | null {
+function resolveDbPassphrase(state: DbEncryptionState): string | null {
   if (!state.enabled || !state.encryptedKey) return null;
   return decryptDbPassphrase(state.encryptedKey);
 }

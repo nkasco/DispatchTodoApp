@@ -111,7 +111,12 @@ export function ProfilePreferences({
     }
   }, [toast]);
 
-  const loadModels = useCallback(async () => {
+  const loadModels = useCallback(async (options?: { allowWithoutActiveConfig?: boolean }) => {
+    if (!activeConfig && !options?.allowWithoutActiveConfig) {
+      setModels([]);
+      return;
+    }
+
     setLoadingModels(true);
     try {
       const result = await api.ai.config.models();
@@ -124,7 +129,7 @@ export function ProfilePreferences({
     } finally {
       setLoadingModels(false);
     }
-  }, [model]);
+  }, [activeConfig, model]);
 
   useEffect(() => {
     void loadConfig();
@@ -234,7 +239,7 @@ export function ProfilePreferences({
         setActiveConfig(result.config);
       }
 
-      await loadModels();
+      await loadModels({ allowWithoutActiveConfig: true });
       toast.success("AI configuration saved");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save AI configuration");
@@ -489,7 +494,7 @@ export function ProfilePreferences({
               </button>
               <button
                 onClick={() => void loadModels()}
-                disabled={loadingModels}
+                disabled={loadingModels || !activeConfig}
                 className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60 transition-all active:scale-95"
               >
                 Reload Models

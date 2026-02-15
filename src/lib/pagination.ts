@@ -1,9 +1,9 @@
-export interface PaginationParams {
+interface PaginationParams {
   page: number;
   limit: number;
 }
 
-export interface PaginatedMeta {
+interface PaginatedMeta {
   page: number;
   limit: number;
   total: number;

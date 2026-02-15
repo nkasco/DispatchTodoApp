@@ -354,22 +354,22 @@ Transform the dashboard from a plain, functional layout into a polished, warm, m
 
 Systematically simplify the codebase, remove unused tooling/dependencies, and resolve security risks without introducing functional gaps.
 
-- [ ] **16.1** Establish a baseline before cleanup: run `npm run build` and `npm test`, record results, and snapshot bundle/dependency footprint for comparison.
-- [ ] **16.2** Perform a full dependency inventory (runtime + dev) and classify each package as required, optional, or removable based on actual repository usage.
-- [ ] **16.3** Detect unused dependencies, exports, and files using static analysis plus manual verification; confirm no dynamic imports/tooling paths are accidentally flagged.
-- [ ] **16.4** Remove unused npm packages, stale scripts, and obsolete config entries from `package.json` and related tooling files.
-- [ ] **16.5** Resolve dependency duplication and version drift (single-version strategy where possible), then refresh lockfile cleanly.
-- [ ] **16.6** Run a security pass (`npm audit` + manual review) and remediate vulnerabilities with the least disruptive upgrades first.
-- [ ] **16.7** For vulnerabilities without safe auto-fixes, apply targeted package upgrades/refactors and document risk/tradeoff decisions.
-- [ ] **16.8** Replace deprecated or unmaintained dependencies with actively maintained alternatives when practical.
-- [ ] **16.9** Prune dead code and stale assets: unused components, helpers, styles, scripts, and docs sections that no longer reflect current behavior.
-- [ ] **16.10** Simplify developer tooling/scripts (build, test, db, dev) to reduce overlap and keep one clear path per workflow.
-- [ ] **16.11** Re-verify app integrity end-to-end after cleanup: auth flows, core CRUD, assistant/MCP paths, migrations, and responsive UI behavior.
-- [ ] **16.12** Final validation gate: `npm run build`, `npm test`, and zero known high/critical vulnerabilities; update `spec.md` and release notes/version to capture cleanup outcomes.
-- [ ] **16.13** Audit repository exposure boundaries for GitHub and Docker: identify sensitive/personal local files (keys, env files, notes, exports, IDE/system artifacts) that must never be committed or copied into images.
-- [ ] **16.14** Review and update `.gitignore` and `.dockerignore` to enforce those boundaries, including env/secrets, local DB files, logs, caches, temp files, OS artifacts, and personal workspace files.
-- [ ] **16.15** Validate ignore behavior with dry-run checks (`git status`, Docker build context inspection) to confirm protected files are excluded before any push/build.
-- [ ] **16.16** Add or verify automated secret-leak safeguards (pre-commit and/or CI secret scanning) and document the expected workflow for handling accidental exposure.
+- [x] **16.1** Establish a baseline before cleanup: run `npm run build` and `npm test`, record results, and snapshot bundle/dependency footprint for comparison.
+- [x] **16.2** Perform a full dependency inventory (runtime + dev) and classify each package as required, optional, or removable based on actual repository usage.
+- [x] **16.3** Detect unused dependencies, exports, and files using static analysis plus manual verification; confirm no dynamic imports/tooling paths are accidentally flagged.
+- [x] **16.4** Remove unused npm packages, stale scripts, and obsolete config entries from `package.json` and related tooling files.
+- [x] **16.5** Resolve dependency duplication and version drift (single-version strategy where possible), then refresh lockfile cleanly.
+- [x] **16.6** Run a security pass (`npm audit` + manual review) and remediate vulnerabilities with the least disruptive upgrades first.
+- [x] **16.7** For vulnerabilities without safe auto-fixes, apply targeted package upgrades/refactors and document risk/tradeoff decisions.
+- [x] **16.8** Replace deprecated or unmaintained dependencies with actively maintained alternatives when practical.
+- [x] **16.9** Prune dead code and stale assets: unused components, helpers, styles, scripts, and docs sections that no longer reflect current behavior.
+- [x] **16.10** Simplify developer tooling/scripts (build, test, db, dev) to reduce overlap and keep one clear path per workflow.
+- [x] **16.11** Re-verify app integrity end-to-end after cleanup: auth flows, core CRUD, assistant/MCP paths, migrations, and responsive UI behavior.
+- [x] **16.12** Final validation gate: `npm run build`, `npm test`, and zero known high/critical vulnerabilities; update `spec.md` and release notes/version to capture cleanup outcomes.
+- [x] **16.13** Audit repository exposure boundaries for GitHub and Docker: identify sensitive/personal local files (keys, env files, notes, exports, IDE/system artifacts) that must never be committed or copied into images.
+- [x] **16.14** Review and update `.gitignore` and `.dockerignore` to enforce those boundaries, including env/secrets, local DB files, logs, caches, temp files, OS artifacts, and personal workspace files.
+- [x] **16.15** Validate ignore behavior with dry-run checks (`git status`, Docker build context inspection) to confirm protected files are excluded before any push/build.
+- [x] **16.16** Add or verify automated secret-leak safeguards (pre-commit and/or CI secret scanning) and document the expected workflow for handling accidental exposure.
 
 Phase 17 - Multi-Device Optimizations
 - [ ] **17.1** Validate and improve responsive behavior for iPhone-sized screens, iPad/tablet breakpoints, and smaller desktop windows.

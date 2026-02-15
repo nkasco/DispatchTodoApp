@@ -60,19 +60,19 @@ export interface Dispatch {
   updatedAt: string;
 }
 
-export interface CompleteResult {
+interface CompleteResult {
   dispatch: Dispatch;
   rolledOver: number;
   nextDispatchId: string | null;
 }
 
-export interface UnfinalizeResult {
+interface UnfinalizeResult {
   dispatch: Dispatch;
   hasNextDispatch: boolean;
   nextDispatchDate: string | null;
 }
 
-export interface CalendarData {
+interface CalendarData {
   dates: Record<string, { finalized: boolean; taskCount: number }>;
 }
 
@@ -91,7 +91,7 @@ export interface RecycleBinItem {
   meta?: Record<string, unknown>;
 }
 
-export interface RecycleBinResponse {
+interface RecycleBinResponse {
   items: RecycleBinItem[];
   retentionDays: number;
 }
@@ -123,7 +123,7 @@ export interface AdminSecuritySettings {
   updatedAt: string;
 }
 
-export interface MePreferences {
+interface MePreferences {
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
 }
@@ -146,7 +146,7 @@ export interface AIModelInfo {
   label: string;
 }
 
-export interface AIConfigPayload {
+interface AIConfigPayload {
   config: AIConfig | null;
   defaults?: { provider: AIProvider; model: string; baseUrl: string | null };
   readOnly?: boolean;
@@ -187,7 +187,7 @@ export interface ChatConversationDetail {
   }>;
 }
 
-export interface PaginatedResponse<T> {
+interface PaginatedResponse<T> {
   data: T[];
   pagination: {
     page: number;

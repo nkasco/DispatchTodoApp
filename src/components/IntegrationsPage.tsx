@@ -636,7 +636,7 @@ export function IntegrationsPage() {
           >
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">API Key Created</h3>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-              Make sure to copy your API key now. You won't be able to see it again.
+              Make sure to copy your API key now. You won&apos;t be able to see it again.
             </p>
             <div className="bg-neutral-50 dark:bg-neutral-800 p-3 rounded-lg mb-4">
               <code className="text-sm text-neutral-900 dark:text-white font-mono break-all">{newlyCreatedKey.key}</code>
