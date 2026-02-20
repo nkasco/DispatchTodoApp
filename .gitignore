@@ -70,6 +70,7 @@ next-env.d.ts
 *.swp
 *.swo
 .claude/
+.claude/settings.local.json
 .cursor/
 *.code-workspace
 

@@ -5,6 +5,7 @@
 
 # local tooling metadata
 .claude
+.claude/settings.local.json
 .cursor
 .vscode
 .idea
