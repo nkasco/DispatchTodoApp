@@ -8,7 +8,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("setup", "start", "stop", "restart", "logs", "status", "down", "pull", "help", "version", "")]
+    [ValidateSet("setup", "start", "stop", "restart", "logs", "status", "down", "pull", "freshstart", "help", "version", "")]
     [string]$Command = ""
 )
 
@@ -20,6 +20,9 @@ $EnvFilePath = Join-Path $ScriptRoot ".env.prod"
 
 $PackageJson = Get-Content -Raw -Path (Join-Path $ScriptRoot "package.json") | ConvertFrom-Json
 $Version = $PackageJson.version
+$RawAppName = if ($PackageJson.name) { [string]$PackageJson.name } else { "dispatch" }
+$AppName = (Get-Culture).TextInfo.ToTitleCase(($RawAppName -replace "[-_]+", " ").ToLowerInvariant())
+$VersionMoniker = "$AppName v$Version"
 
 function Write-CyanLn { param([string]$Text) Write-Host $Text -ForegroundColor Cyan }
 function Write-DimLn { param([string]$Text) Write-Host $Text -ForegroundColor DarkGray }
@@ -41,7 +44,7 @@ function Show-Logo {
         Write-Host $line.Text -ForegroundColor $line.Color
     }
     Write-Host ""
-    Write-DimLn "  v$Version - Docker production launcher"
+    Write-DimLn "  $VersionMoniker - Docker production launcher"
     Write-Host ""
 }
 
@@ -59,12 +62,13 @@ function Show-Help {
     Write-Host "    logs       Follow Dispatch logs"
     Write-Host "    status     Show container status"
     Write-Host "    pull       Pull latest image and restart"
+    Write-Host "    freshstart Remove containers and volumes, then start fresh"
     Write-Host "    down       Stop and remove containers/network"
     Write-Host "    version    Show version number"
     Write-Host "    help       Show this help message"
     Write-Host ""
     Write-DimLn "  Production config is stored in .env.prod"
-    Write-DimLn "  Developer workflow (npm build/test/dev) moved to .\dispatch-dev.ps1"
+    Write-DimLn "  Developer workflow (npm build/test/dev): .\scripts\launchers\dispatch-dev.ps1"
     Write-Host ""
 }
 
@@ -214,6 +218,25 @@ function Run-Compose {
     }
 }
 
+function Get-ComposeProjectName {
+    if ($env:COMPOSE_PROJECT_NAME -and $env:COMPOSE_PROJECT_NAME.Trim().Length -gt 0) {
+        return $env:COMPOSE_PROJECT_NAME.Trim().ToLowerInvariant()
+    }
+
+    return (Split-Path -Path $ScriptRoot -Leaf).ToLowerInvariant()
+}
+
+function Remove-AssociatedComposeVolumes {
+    $projectName = Get-ComposeProjectName
+    $volumeNames = @(docker volume ls --filter "label=com.docker.compose.project=$projectName" --format "{{.Name}}" |
+            Where-Object { $_ -and $_.Trim().Length -gt 0 })
+
+    if ($volumeNames.Count -gt 0) {
+        Write-DimLn "Removing associated volumes..."
+        docker volume rm @volumeNames | Out-Null
+    }
+}
+
 function Invoke-Setup {
     Show-Logo
     Assert-Docker
@@ -334,6 +357,24 @@ function Invoke-Pull {
     Run-Compose -ComposeArgs @("up", "-d", "--remove-orphans")
 }
 
+function Invoke-FreshStart {
+    Show-Logo
+    Assert-Docker
+    Assert-EnvFile
+
+    $confirmed = Prompt-YesNo -Message "This will permanently remove Dispatch containers and volumes. Continue?" -Default $false
+    if (-not $confirmed) {
+        Write-YellowLn "Fresh start cancelled."
+        return
+    }
+
+    Write-YellowLn "Removing containers and volumes for a clean start..."
+    Run-Compose -ComposeArgs @("down", "-v", "--remove-orphans")
+    Remove-AssociatedComposeVolumes
+    Run-Compose -ComposeArgs @("up", "-d", "--remove-orphans", "--force-recreate")
+    Write-GreenLn "Dispatch fresh start complete."
+}
+
 switch ($Command) {
     "setup" { Invoke-Setup }
     "start" { Invoke-Start }
@@ -343,7 +384,8 @@ switch ($Command) {
     "status" { Invoke-Status }
     "down" { Invoke-Down }
     "pull" { Invoke-Pull }
-    "version" { Write-Host "Dispatch v$Version" }
+    "freshstart" { Invoke-FreshStart }
+    "version" { Write-Host $VersionMoniker }
     "help" { Show-Help }
     default { Show-Help }
 }

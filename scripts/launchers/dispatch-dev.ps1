@@ -6,18 +6,18 @@
     Provides commands to set up, start, update, and manage your Dispatch instance.
 
 .PARAMETER Command
-    The command to run: setup, dev, start, build, update, seed, studio, test, publish, resetdb, help
+    The command to run: setup, dev, start, build, update, seed, studio, test, publish, resetdb, freshstart, help
 
 .EXAMPLE
-    .\dispatch-dev.ps1 setup
-    .\dispatch-dev.ps1 setup full
-    .\dispatch-dev.ps1 dev
-    .\dispatch-dev.ps1 update
+    .\scripts\launchers\dispatch-dev.ps1 setup
+    .\scripts\launchers\dispatch-dev.ps1 setup full
+    .\scripts\launchers\dispatch-dev.ps1 dev
+    .\scripts\launchers\dispatch-dev.ps1 update
 #>
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("setup", "dev", "start", "build", "update", "seed", "studio", "test", "lint", "publish", "resetdb", "help", "version", "")]
+    [ValidateSet("setup", "dev", "start", "build", "update", "seed", "studio", "test", "lint", "publish", "resetdb", "freshstart", "help", "version", "")]
     [string]$Command = "",
     [Parameter(Position = 1)]
     [ValidateSet("", "full")]
@@ -26,10 +26,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 
 # ── Version ───────────────────────────────────────────────────
-$PackageJson = Get-Content -Raw -Path "$PSScriptRoot\package.json" | ConvertFrom-Json
+$PackageJson = Get-Content -Raw -Path "$RepoRoot\package.json" | ConvertFrom-Json
 $Version = $PackageJson.version
+$RawAppName = if ($PackageJson.name) { [string]$PackageJson.name } else { "dispatch" }
+$AppName = (Get-Culture).TextInfo.ToTitleCase(($RawAppName -replace "[-_]+", " ").ToLowerInvariant())
+$VersionMoniker = "$AppName v$Version"
 
 # ── Colors ────────────────────────────────────────────────────
 function Write-Cyan    { param([string]$Text) Write-Host $Text -ForegroundColor Cyan -NoNewline }
@@ -54,7 +58,7 @@ function Show-Logo {
         Write-Host $line.Text -ForegroundColor $line.Color
     }
     Write-Host ""
-    Write-DimLn "  v$Version - Developer launcher (requires npm)"
+    Write-DimLn "  $VersionMoniker - Developer launcher (requires npm)"
     Write-Host ""
 }
 
@@ -63,7 +67,7 @@ function Show-Help {
     Show-Logo
 
     Write-Host "  USAGE" -ForegroundColor White
-    Write-Host "    .\dispatch-dev.ps1 " -NoNewline; Write-CyanLn "<command>"
+    Write-Host "    .\scripts\launchers\dispatch-dev.ps1 " -NoNewline; Write-CyanLn "<command>"
     Write-Host ""
     Write-Host "  COMMANDS" -ForegroundColor White
 
@@ -79,32 +83,56 @@ function Show-Help {
         @{ Cmd = "lint";    Desc = "Run ESLint" }
         @{ Cmd = "publish"; Desc = "Build dev image, tag, and push container image" }
         @{ Cmd = "resetdb"; Desc = "Remove dev Docker volumes (fresh SQLite state)" }
+        @{ Cmd = "freshstart"; Desc = "Run full dev cleanup (containers, volumes, local images)" }
         @{ Cmd = "version"; Desc = "Show version number" }
         @{ Cmd = "help";    Desc = "Show this help message" }
     )
 
     foreach ($c in $commands) {
         Write-Host "    " -NoNewline
-        Write-Host ("{0,-10}" -f $c.Cmd) -ForegroundColor Cyan -NoNewline
+        Write-Host ("{0,-11}" -f $c.Cmd) -ForegroundColor Cyan -NoNewline
         Write-Host $c.Desc -ForegroundColor DarkGray
     }
     Write-Host ""
-    Write-DimLn "  Tip: '.\dispatch-dev.ps1 setup full' performs full dev Docker cleanup first."
+    Write-DimLn "  Tip: '.\scripts\launchers\dispatch-dev.ps1 setup full' performs full dev Docker cleanup first."
     Write-Host ""
 }
 
 # ── Prerequisite checks ──────────────────────────────────────
 function Assert-NodeModules {
-    if (-not (Test-Path "$PSScriptRoot\node_modules")) {
+    if (-not (Test-Path "$RepoRoot\node_modules")) {
         Write-YellowLn "  Dependencies not installed. Running npm install..."
         Write-Host ""
-        Set-Location $PSScriptRoot
+        Set-Location $RepoRoot
         npm install
         if ($LASTEXITCODE -ne 0) {
             Write-RedLn "  npm install failed. Please fix errors and retry."
             exit 1
         }
         Write-Host ""
+    }
+}
+
+function Prompt-YesNo {
+    param(
+        [string]$Message,
+        [bool]$Default = $false
+    )
+
+    while ($true) {
+        $defaultLabel = if ($Default) { "Y" } else { "N" }
+        $raw = Read-Host "$Message [y/n] (default: $defaultLabel)"
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return $Default
+        }
+
+        switch ($raw.Trim().ToLowerInvariant()) {
+            "y" { return $true }
+            "yes" { return $true }
+            "n" { return $false }
+            "no" { return $false }
+            default { Write-YellowLn "  Enter y or n." }
+        }
     }
 }
 
@@ -117,10 +145,10 @@ function Invoke-FullDevCleanup {
 
     Write-YellowLn "  Running full dev Docker cleanup..."
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
 
     # Always tear down this compose stack first.
-    if (Test-Path "$PSScriptRoot\.env.local") {
+    if (Test-Path "$RepoRoot\.env.local") {
         docker compose -f docker-compose.dev.yml --env-file .env.local down -v --remove-orphans
     } else {
         docker compose -f docker-compose.dev.yml down -v --remove-orphans
@@ -182,7 +210,7 @@ function Invoke-Setup {
         Invoke-FullDevCleanup
     }
     Assert-NodeModules
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npx tsx scripts/setup.ts
 }
 
@@ -192,7 +220,7 @@ function Invoke-Dev {
     Write-GreenLn "  Starting development server..."
     Write-DimLn "  http://localhost:3000"
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npm run dev
 }
 
@@ -201,7 +229,7 @@ function Invoke-Start {
     Assert-NodeModules
     Write-GreenLn "  Starting production server..."
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npm run start
 }
 
@@ -210,7 +238,7 @@ function Invoke-Build {
     Assert-NodeModules
     Write-GreenLn "  Creating production build..."
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npm run build
 }
 
@@ -219,7 +247,7 @@ function Invoke-Update {
     Write-GreenLn "  Updating Dispatch..."
     Write-Host ""
 
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
 
     # Pull latest changes
     Write-Host "  [1/3] " -NoNewline; Write-CyanLn "Pulling latest changes..."
@@ -255,7 +283,7 @@ function Invoke-Seed {
     Assert-NodeModules
     Write-GreenLn "  Seeding database with sample data..."
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npm run db:seed
 }
 
@@ -265,7 +293,7 @@ function Invoke-Studio {
     Write-GreenLn "  Opening Drizzle Studio..."
     Write-DimLn "  Browse your database at https://local.drizzle.studio"
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npm run db:studio
 }
 
@@ -274,7 +302,7 @@ function Invoke-Test {
     Assert-NodeModules
     Write-GreenLn "  Running tests..."
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npm test
 }
 
@@ -283,7 +311,7 @@ function Invoke-Lint {
     Assert-NodeModules
     Write-GreenLn "  Running ESLint..."
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
     npm run lint
 }
 
@@ -323,8 +351,8 @@ function Invoke-Publish {
         exit 1
     }
 
-    Set-Location $PSScriptRoot
-    $envFile = "$PSScriptRoot\.env.local"
+    Set-Location $RepoRoot
+    $envFile = "$RepoRoot\.env.local"
 
     $sourceImage = if ($env:DISPATCH_DEV_IMAGE) {
         $env:DISPATCH_DEV_IMAGE
@@ -389,9 +417,9 @@ function Invoke-ResetDb {
 
     Write-YellowLn "  Removing dev Docker containers and volumes..."
     Write-Host ""
-    Set-Location $PSScriptRoot
+    Set-Location $RepoRoot
 
-    if (Test-Path "$PSScriptRoot\.env.local") {
+    if (Test-Path "$RepoRoot\.env.local") {
         docker compose -f docker-compose.dev.yml --env-file .env.local down -v --remove-orphans
     } else {
         docker compose -f docker-compose.dev.yml down -v --remove-orphans
@@ -406,10 +434,22 @@ function Invoke-ResetDb {
     Write-Host ""
 }
 
+function Invoke-FreshStart {
+    Show-Logo
+    $confirmed = Prompt-YesNo -Message "This will remove Dispatch dev containers, volumes, and local images. Continue?" -Default $false
+    if (-not $confirmed) {
+        Write-YellowLn "  Fresh start cancelled."
+        Write-Host ""
+        return
+    }
+
+    Invoke-FullDevCleanup
+}
+
 # ── Route ─────────────────────────────────────────────────────
 if ($SetupMode -and $Command -ne "setup") {
     Write-RedLn "Invalid argument '$SetupMode' for command '$Command'."
-    Write-DimLn "Use: .\dispatch-dev.ps1 setup full"
+    Write-DimLn "Use: .\scripts\launchers\dispatch-dev.ps1 setup full"
     exit 1
 }
 
@@ -425,7 +465,9 @@ switch ($Command) {
     "lint"    { Invoke-Lint }
     "publish" { Invoke-Publish }
     "resetdb" { Invoke-ResetDb }
-    "version" { Write-Host "Dispatch v$Version" }
+    "freshstart" { Invoke-FreshStart }
+    "version" { Write-Host $VersionMoniker }
     "help"    { Show-Help }
     default   { Show-Help }
 }
+

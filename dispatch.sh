@@ -6,7 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 ENV_FILE="$SCRIPT_DIR/.env.prod"
-VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")"
+PACKAGE_META="$(node -e 'const p=require("./package.json"); const name=((p.name||"dispatch").replace(/[-_]+/g," ").toLowerCase().replace(/\b\w/g,c=>c.toUpperCase())); const version=p.version||"0.0.0"; process.stdout.write(name + "|" + version);' 2>/dev/null || echo "Dispatch|0.0.0")"
+IFS='|' read -r APP_NAME VERSION <<< "$PACKAGE_META"
+VERSION_MONIKER="${APP_NAME} v${VERSION}"
 
 RESET="\033[0m"
 BOLD="\033[1m"
@@ -24,7 +26,7 @@ show_logo() {
   echo -e "${CYAN} | |_| || | ___) |  __/ ___ \\| || |___|  _  |${RESET}"
   echo -e "${CYAN} |____/|___|____/|_| /_/   \\_\\_| \\____|_| |_|${RESET}"
   echo ""
-  echo -e "  ${DIM}v${VERSION} - Docker production launcher${RESET}"
+  echo -e "  ${DIM}${VERSION_MONIKER} - Docker production launcher${RESET}"
   echo ""
 }
 
@@ -41,12 +43,13 @@ show_help() {
   echo "    logs       Follow Dispatch logs"
   echo "    status     Show container status"
   echo "    pull       Pull latest image and restart"
+  echo "    freshstart Remove containers and volumes, then start fresh"
   echo "    down       Stop and remove containers/network"
   echo "    version    Show version number"
   echo "    help       Show this help message"
   echo ""
   echo -e "  ${DIM}Production config is stored in .env.prod${RESET}"
-  echo -e "  ${DIM}Developer workflow (npm build/test/dev) moved to ./dispatch-dev.sh${RESET}"
+  echo -e "  ${DIM}Developer workflow (npm build/test/dev): ./scripts/launchers/dispatch-dev.sh${RESET}"
   echo ""
 }
 
@@ -202,6 +205,26 @@ run_compose() {
   docker compose --env-file "$ENV_FILE" "$@"
 }
 
+get_compose_project_name() {
+  if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
+    echo "$COMPOSE_PROJECT_NAME" | tr '[:upper:]' '[:lower:]'
+    return
+  fi
+
+  basename "$SCRIPT_DIR" | tr '[:upper:]' '[:lower:]'
+}
+
+remove_associated_compose_volumes() {
+  local project_name
+  project_name="$(get_compose_project_name)"
+
+  mapfile -t associated_volumes < <(docker volume ls --filter "label=com.docker.compose.project=${project_name}" --format '{{.Name}}')
+  if [ ${#associated_volumes[@]} -gt 0 ]; then
+    echo -e "${DIM}Removing associated volumes...${RESET}"
+    docker volume rm "${associated_volumes[@]}" >/dev/null
+  fi
+}
+
 cmd_setup() {
   show_logo
   assert_docker
@@ -321,6 +344,23 @@ cmd_pull() {
   run_compose up -d --remove-orphans
 }
 
+cmd_freshstart() {
+  show_logo
+  assert_docker
+  assert_env_file
+
+  if ! prompt_yes_no "This will permanently remove Dispatch containers and volumes. Continue?" "false"; then
+    echo -e "${YELLOW}Fresh start cancelled.${RESET}"
+    return
+  fi
+
+  echo -e "${YELLOW}Removing containers and volumes for a clean start...${RESET}"
+  run_compose down -v --remove-orphans
+  remove_associated_compose_volumes
+  run_compose up -d --remove-orphans --force-recreate
+  echo -e "${GREEN}Dispatch fresh start complete.${RESET}"
+}
+
 COMMAND="${1:-help}"
 
 case "$COMMAND" in
@@ -332,7 +372,8 @@ case "$COMMAND" in
   status) cmd_status ;;
   down) cmd_down ;;
   pull) cmd_pull ;;
-  version) echo "Dispatch v${VERSION}" ;;
+  freshstart) cmd_freshstart ;;
+  version) echo "${VERSION_MONIKER}" ;;
   help) show_help ;;
   *)
     echo -e "${RED}Unknown command: ${COMMAND}${RESET}"

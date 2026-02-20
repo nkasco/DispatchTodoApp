@@ -3,8 +3,8 @@
 # Dispatch developer launcher for the Dispatch task management app.
 #
 # Usage:
-#   ./dispatch-dev.sh <command>
-#   ./dispatch-dev.sh setup full
+#   ./scripts/launchers/dispatch-dev.sh <command>
+#   ./scripts/launchers/dispatch-dev.sh setup full
 #
 # Commands:
 #   setup    Interactive setup (.env + Docker Compose startup)
@@ -18,16 +18,20 @@
 #   lint     Run ESLint
 #   publish  Build dev image, tag, and push container image
 #   resetdb  Remove dev Docker volumes (fresh SQLite state)
+#   freshstart Run full dev cleanup (containers, volumes, local images)
 #   version  Show version number
 #   help     Show this help message
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
 
 # ── Version ───────────────────────────────────────────────────
-VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")
+PACKAGE_META="$(node -e 'const p=require("./package.json"); const name=((p.name||"dispatch").replace(/[-_]+/g," ").toLowerCase().replace(/\b\w/g,c=>c.toUpperCase())); const version=p.version||"0.0.0"; process.stdout.write(name + "|" + version);' 2>/dev/null || echo "Dispatch|0.0.0")"
+IFS='|' read -r APP_NAME VERSION <<< "$PACKAGE_META"
+VERSION_MONIKER="${APP_NAME} v${VERSION}"
 
 # ── Colors ────────────────────────────────────────────────────
 RESET="\033[0m"
@@ -57,7 +61,7 @@ show_logo() {
     echo -e "${C5}  ██████╔╝██║███████║██║     ██║  ██║   ██║   ╚██████╗██║  ██║${RESET}"
     echo -e "${C6}  ╚═════╝ ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝${RESET}"
     echo ""
-    echo -e "  ${DIM}v${VERSION} - Developer launcher (requires npm)${RESET}"
+    echo -e "  ${DIM}${VERSION_MONIKER} - Developer launcher (requires npm)${RESET}"
     echo ""
 }
 
@@ -66,7 +70,7 @@ show_help() {
     show_logo
 
     echo -e "  ${BOLD}USAGE${RESET}"
-    echo -e "    ./dispatch-dev.sh ${CYAN}<command>${RESET}"
+    echo -e "    ./scripts/launchers/dispatch-dev.sh ${CYAN}<command>${RESET}"
     echo ""
     echo -e "  ${BOLD}COMMANDS${RESET}"
 
@@ -81,10 +85,11 @@ show_help() {
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "lint"    "Run ESLint"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "publish" "Build dev image, tag, and push container image"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "resetdb" "Remove dev Docker volumes (fresh SQLite state)"
+    printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "freshstart" "Run full dev cleanup (containers, volumes, local images)"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "version" "Show version number"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "help"    "Show this help message"
     echo ""
-    echo -e "  ${DIM}Tip: './dispatch-dev.sh setup full' performs full dev Docker cleanup first.${RESET}"
+    echo -e "  ${DIM}Tip: './scripts/launchers/dispatch-dev.sh setup full' performs full dev Docker cleanup first.${RESET}"
     echo ""
 }
 
@@ -186,7 +191,7 @@ cmd_setup() {
     show_logo
     if [ -n "$mode" ] && [ "$mode" != "full" ]; then
         echo -e "  ${RED}Invalid setup mode: ${mode}${RESET}"
-        echo -e "  ${DIM}Use: ./dispatch-dev.sh setup full${RESET}"
+        echo -e "  ${DIM}Use: ./scripts/launchers/dispatch-dev.sh setup full${RESET}"
         exit 1
     fi
     if [ "$mode" = "full" ]; then
@@ -351,13 +356,24 @@ cmd_resetdb() {
     echo ""
 }
 
+cmd_freshstart() {
+    show_logo
+    if ! prompt_yes_no "This will remove Dispatch dev containers, volumes, and local images. Continue?" "false"; then
+        echo -e "  ${YELLOW}Fresh start cancelled.${RESET}"
+        echo ""
+        return
+    fi
+
+    full_dev_cleanup
+}
+
 # ── Route ─────────────────────────────────────────────────────
 COMMAND="${1:-help}"
 SETUP_MODE="${2:-}"
 
 if [ -n "$SETUP_MODE" ] && [ "$COMMAND" != "setup" ]; then
     echo -e "  ${RED}Invalid extra argument for command '${COMMAND}': ${SETUP_MODE}${RESET}"
-    echo -e "  ${DIM}Use: ./dispatch-dev.sh setup full${RESET}"
+    echo -e "  ${DIM}Use: ./scripts/launchers/dispatch-dev.sh setup full${RESET}"
     exit 1
 fi
 
@@ -373,7 +389,8 @@ case "$COMMAND" in
     lint)    cmd_lint ;;
     publish) cmd_publish ;;
     resetdb) cmd_resetdb ;;
-    version) echo "Dispatch v${VERSION}" ;;
+    freshstart) cmd_freshstart ;;
+    version) echo "${VERSION_MONIKER}" ;;
     help)    show_help ;;
     *)
         echo -e "  ${RED}Unknown command: ${COMMAND}${RESET}"
