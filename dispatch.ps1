@@ -329,7 +329,9 @@ function Invoke-Pull {
     Assert-Docker
     Assert-EnvFile
     Run-Compose -ComposeArgs @("pull")
-    Run-Compose -ComposeArgs @("up", "-d")
+    Write-DimLn "Cleaning up old Dispatch containers..."
+    Run-Compose -ComposeArgs @("down", "--remove-orphans")
+    Run-Compose -ComposeArgs @("up", "-d", "--remove-orphans")
 }
 
 switch ($Command) {

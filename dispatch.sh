@@ -316,7 +316,9 @@ cmd_pull() {
   assert_docker
   assert_env_file
   run_compose pull
-  run_compose up -d
+  echo -e "${DIM}Cleaning up old Dispatch containers...${RESET}"
+  run_compose down --remove-orphans
+  run_compose up -d --remove-orphans
 }
 
 COMMAND="${1:-help}"

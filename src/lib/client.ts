@@ -123,6 +123,21 @@ export interface AdminSecuritySettings {
   updatedAt: string;
 }
 
+export type AdminVersionComparison = "up_to_date" | "behind" | "ahead" | "unknown";
+
+export interface AdminVersionStatus {
+  repositoryUrl: string;
+  runningVersion: string;
+  latestVersion: string | null;
+  latestTag: string | null;
+  latestReleaseUrl: string | null;
+  publishedAt: string | null;
+  checkedAt: string;
+  comparison: AdminVersionComparison;
+  source: "package_json_badge" | "package_json" | "unknown";
+  error: string | null;
+}
+
 interface MePreferences {
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
@@ -498,6 +513,9 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
+
+    getVersionStatus: () =>
+      request<AdminVersionStatus>("/admin/version"),
   },
 
   ai: {
