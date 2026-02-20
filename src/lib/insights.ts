@@ -1,6 +1,6 @@
 import type { Task } from "@/lib/client";
 
-export type TaskForInsights = Pick<Task, "createdAt" | "updatedAt" | "status">;
+type TaskForInsights = Pick<Task, "createdAt" | "updatedAt" | "status">;
 
 export type DailyPoint = {
   dateKey: string;

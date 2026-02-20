@@ -19,7 +19,9 @@ Dispatch is a locally-hosted personal web application built with Next.js (App Ro
 npm run dev          # Start dev server (http://localhost:3000)
 npm run build        # Production build
 npm run start        # Start production server
-npm run lint         # ESLint
+npm run lint         # ESLint (Next core-web-vitals config)
+npm run check        # Build + test + high/critical audit gate
+npm run security:audit # Security audit (fails on high/critical findings)
 npm run db:generate  # Generate Drizzle migrations from schema changes
 npm run db:migrate   # Run pending migrations
 npm run db:push      # Push schema directly to DB (dev shortcut, skips migration files)

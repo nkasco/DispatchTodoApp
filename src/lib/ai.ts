@@ -17,14 +17,14 @@ export const AI_PROVIDERS = [
   "custom",
 ] as const;
 
-export type AIProvider = (typeof AI_PROVIDERS)[number];
+type AIProvider = (typeof AI_PROVIDERS)[number];
 
-export type UserAiConfig = Omit<typeof aiConfigs.$inferSelect, "apiKey" | "provider"> & {
+type UserAiConfig = Omit<typeof aiConfigs.$inferSelect, "apiKey" | "provider"> & {
   provider: AIProvider;
   apiKey: string | null;
 };
 
-export type ModelInfo = {
+type ModelInfo = {
   id: string;
   label: string;
 };
@@ -33,11 +33,11 @@ export function isAIProvider(value: unknown): value is AIProvider {
   return AI_PROVIDERS.includes(value as AIProvider);
 }
 
-export function isLocalProvider(provider: AIProvider): boolean {
+function isLocalProvider(provider: AIProvider): boolean {
   return provider === "ollama" || provider === "lmstudio";
 }
 
-export function requiresApiKey(provider: AIProvider): boolean {
+function requiresApiKey(provider: AIProvider): boolean {
   return provider === "openai" || provider === "anthropic" || provider === "google";
 }
 
@@ -228,7 +228,7 @@ async function getSharedAdminAiConfig(preferredProvider?: AIProvider): Promise<U
   return null;
 }
 
-export function assertAiConfigReady(config: UserAiConfig) {
+function assertAiConfigReady(config: UserAiConfig) {
   if (requiresApiKey(config.provider) && !config.apiKey) {
     throw new Error(`${providerLabel(config.provider)} API key is required.`);
   }

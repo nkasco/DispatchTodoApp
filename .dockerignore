@@ -1,65 +1,63 @@
-# git
+# git and CI metadata
 .git
+.gitignore
 .github
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# local tooling metadata
+.claude
+.cursor
+.vscode
+.idea
+*.code-workspace
 
-# testing
-/coverage
+# dependencies and build outputs
+node_modules
+.next
+out
+build
+dist
+coverage
 
-# next.js
-/.next
-/out
-
-# production
-/build
-/dist
-
-# misc
-.DS_Store
-Thumbs.db
-Desktop.ini
-*.pem
-nul
-
-# debug
+# logs and temp files
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 pnpm-debug.log*
-dev.log
+tmp
+temp
+*.tmp
+*.bak
+*.orig
 
-# env files
+# local env and secrets
 .env
+.env.*
 .env*.local
+*.pem
+*.key
+*.crt
+*.pfx
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# database
+# local data
 *.db
 *.db-journal
 *.db-wal
 .dispatch-security.json
 .dispatch-security.*.json
 
-# editor
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
-.idea/
-*.swp
-*.swo
+# docs and local planning artifacts
+docs
+implementation_plan.md
+spec.md
+agents.md
+CLAUDE.md
+
+# misc
+.DS_Store
+Thumbs.db
+Desktop.ini
+nul
+next-env.d.ts
+*.tsbuildinfo
