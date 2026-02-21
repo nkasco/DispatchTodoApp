@@ -16,7 +16,7 @@ function jsonResponse(data: unknown, status = 200) {
 describe("Admin Version API", () => {
   beforeEach(() => {
     fetchMock.mockReset();
-    process.env.NEXT_PUBLIC_APP_VERSION = "0.4.2";
+    process.env.NEXT_PUBLIC_APP_VERSION = "0.4.3";
     mockSession({
       user: {
         id: "admin-1",
@@ -30,7 +30,7 @@ describe("Admin Version API", () => {
   it("returns up_to_date when running version matches README package badge version", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
-        value: "v0.4.2",
+        value: "v0.4.3",
       }),
     );
 
@@ -40,20 +40,20 @@ describe("Admin Version API", () => {
     const data = await res.json();
     expect(data.comparison).toBe("up_to_date");
     expect(data.source).toBe("package_json_badge");
-    expect(data.latestVersion).toBe("0.4.2");
+    expect(data.latestVersion).toBe("0.4.3");
   });
 
   it("returns behind when a newer version is available", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
-        value: "v0.4.3",
+        value: "v0.4.4",
       }),
     );
 
     const res = await GET(new Request("http://localhost/api/admin/version"), {});
     const data = await res.json();
     expect(data.comparison).toBe("behind");
-    expect(data.latestVersion).toBe("0.4.3");
+    expect(data.latestVersion).toBe("0.4.4");
   });
 
   it("falls back to repository package.json when README badge endpoint is unavailable", async () => {
@@ -61,14 +61,14 @@ describe("Admin Version API", () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         encoding: "base64",
-        content: Buffer.from(JSON.stringify({ version: "0.4.2" }), "utf8").toString("base64"),
+        content: Buffer.from(JSON.stringify({ version: "0.4.3" }), "utf8").toString("base64"),
       }),
     );
 
     const res = await GET(new Request("http://localhost/api/admin/version"), {});
     const data = await res.json();
     expect(data.source).toBe("package_json");
-    expect(data.latestVersion).toBe("0.4.2");
+    expect(data.latestVersion).toBe("0.4.3");
     expect(data.comparison).toBe("up_to_date");
   });
 
