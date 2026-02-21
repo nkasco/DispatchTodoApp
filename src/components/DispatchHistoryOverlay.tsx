@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { api } from "@/lib/client";
 import { IconCheck, IconChevronLeft } from "@/components/icons";
+import { getIsoDateForTimeZone } from "@/lib/timezone";
 
 interface DispatchHistoryOverlayProps {
   currentDate: string;
@@ -10,15 +12,13 @@ interface DispatchHistoryOverlayProps {
   onDateSelect: (date: string) => void;
 }
 
-function todayStr() {
-  return new Date().toISOString().split("T")[0];
-}
-
 export function DispatchHistoryOverlay({
   currentDate,
   onClose,
   onDateSelect,
 }: DispatchHistoryOverlayProps) {
+  const { data: session } = useSession();
+  const today = getIsoDateForTimeZone(new Date(), session?.user?.timeZone ?? null);
   const [year, setYear] = useState(() => parseInt(currentDate.split("-")[0], 10));
   const [month, setMonth] = useState(() => parseInt(currentDate.split("-")[1], 10));
   const [calendarData, setCalendarData] = useState<Record<string, { finalized: boolean; taskCount: number }>>({});
@@ -66,9 +66,9 @@ export function DispatchHistoryOverlay({
   }
 
   function goToToday() {
-    const today = new Date();
-    setYear(today.getFullYear());
-    setMonth(today.getMonth() + 1);
+    const [todayYear, todayMonth] = today.split("-");
+    setYear(parseInt(todayYear, 10));
+    setMonth(parseInt(todayMonth, 10));
   }
 
   // Generate calendar grid
@@ -88,7 +88,6 @@ export function DispatchHistoryOverlay({
   }
 
   const monthName = new Date(year, month - 1).toLocaleDateString("en-US", { month: "long" });
-  const today = todayStr();
 
   function handleDateClick(day: number) {
     const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

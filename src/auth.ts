@@ -36,7 +36,7 @@ function isStaleJwtSecretError(code: unknown, details: unknown[]): boolean {
 
 async function getUserAccess(
   userId: string,
-): Promise<{ role: UserRole; isFrozen: boolean; showAdminQuickAccess: boolean; assistantEnabled: boolean }> {
+): Promise<{ role: UserRole; isFrozen: boolean; showAdminQuickAccess: boolean; assistantEnabled: boolean; timeZone: string | null }> {
   ensureAuthDatabaseReady();
   const [dbUser] = await db
     .select({
@@ -44,6 +44,7 @@ async function getUserAccess(
       frozenAt: users.frozenAt,
       showAdminQuickAccess: users.showAdminQuickAccess,
       assistantEnabled: users.assistantEnabled,
+      timeZone: users.timeZone,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -54,6 +55,7 @@ async function getUserAccess(
     isFrozen: Boolean(dbUser?.frozenAt),
     showAdminQuickAccess: dbUser?.showAdminQuickAccess ?? true,
     assistantEnabled: dbUser?.assistantEnabled ?? true,
+    timeZone: dbUser?.timeZone ?? null,
   };
 }
 
@@ -97,6 +99,7 @@ providers.push(
         isFrozen: false,
         showAdminQuickAccess: user.showAdminQuickAccess ?? true,
         assistantEnabled: user.assistantEnabled ?? true,
+        timeZone: user.timeZone ?? null,
       };
     },
   })
@@ -185,6 +188,7 @@ export const { handlers, auth, signIn } = NextAuth({
           token.isFrozen = access.isFrozen;
           token.showAdminQuickAccess = access.showAdminQuickAccess;
           token.assistantEnabled = access.assistantEnabled;
+          token.timeZone = access.timeZone;
         } catch (error) {
           // Avoid invalidating the active session during transient rekey transitions.
           console.error("Failed to refresh JWT access claims from database:", error);
@@ -192,6 +196,7 @@ export const { handlers, auth, signIn } = NextAuth({
           token.isFrozen = Boolean(token.isFrozen);
           token.showAdminQuickAccess = (token.showAdminQuickAccess as boolean | undefined) ?? true;
           token.assistantEnabled = (token.assistantEnabled as boolean | undefined) ?? true;
+          token.timeZone = (token.timeZone as string | null | undefined) ?? null;
         }
       }
 
@@ -204,6 +209,7 @@ export const { handlers, auth, signIn } = NextAuth({
         session.user.isFrozen = Boolean(token.isFrozen);
         session.user.showAdminQuickAccess = (token.showAdminQuickAccess as boolean | undefined) ?? true;
         session.user.assistantEnabled = (token.assistantEnabled as boolean | undefined) ?? true;
+        session.user.timeZone = (token.timeZone as string | null | undefined) ?? null;
       }
       return session;
     },

@@ -39,6 +39,7 @@ export default async function Profile() {
         role: users.role,
         showAdminQuickAccess: users.showAdminQuickAccess,
         assistantEnabled: users.assistantEnabled,
+        timeZone: users.timeZone,
       })
       .from(users)
       .where(eq(users.id, userId))
@@ -50,6 +51,7 @@ export default async function Profile() {
   const isAdmin = currentUserRecord?.role === "admin";
   const showAdminQuickAccess = currentUserRecord?.showAdminQuickAccess ?? true;
   const assistantEnabled = currentUserRecord?.assistantEnabled ?? true;
+  const timeZone = currentUserRecord?.timeZone ?? null;
 
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-6 animate-fade-in-up">
@@ -115,6 +117,7 @@ export default async function Profile() {
         isAdmin={isAdmin}
         showAdminQuickAccess={showAdminQuickAccess}
         assistantEnabled={assistantEnabled}
+        timeZone={timeZone}
       />
 
       {isAdmin && (

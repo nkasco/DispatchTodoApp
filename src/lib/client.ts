@@ -141,6 +141,7 @@ export interface AdminVersionStatus {
 interface MePreferences {
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
+  timeZone?: string | null;
 }
 
 export interface AIConfig {

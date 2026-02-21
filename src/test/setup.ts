@@ -10,6 +10,7 @@ type MockSession = {
     isFrozen?: boolean;
     showAdminQuickAccess?: boolean;
     assistantEnabled?: boolean;
+    timeZone?: string | null;
   };
 } | null;
 

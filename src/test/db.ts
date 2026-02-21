@@ -22,6 +22,7 @@ export function createTestDb() {
       "password" text,
       "role" text NOT NULL DEFAULT 'member',
       "frozenAt" text,
+      "timeZone" text,
       "showAdminQuickAccess" integer NOT NULL DEFAULT 1,
       "assistantEnabled" integer NOT NULL DEFAULT 1
     );
