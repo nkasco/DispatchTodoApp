@@ -10,6 +10,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export const GET = withAuth(async (_req, session, ctx) => {
   const { id } = await (ctx as RouteContext).params;
   const userId = session.user.id;
+  const userTimeZone = session.user.timeZone ?? null;
 
   const [conversation] = await db
     .select()
@@ -23,7 +24,7 @@ export const GET = withAuth(async (_req, session, ctx) => {
 
   const normalizedConversation = {
     ...conversation,
-    title: normalizeConversationTitle(conversation.title, conversation.createdAt),
+    title: normalizeConversationTitle(conversation.title, conversation.createdAt, userTimeZone),
   };
 
   const messages = await db

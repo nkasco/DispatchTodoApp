@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "@/test/db";
 import { mockSession } from "@/test/setup";
@@ -42,6 +42,9 @@ function putReq(url: string, body: unknown) {
 
 describe("AI Conversations API", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-21T01:30:00.000Z"));
+
     testDb = createTestDb();
     testDb.db.insert(users).values(TEST_USER).run();
     mockSession({
@@ -51,8 +54,13 @@ describe("AI Conversations API", () => {
         email: TEST_USER.email,
         role: TEST_USER.role,
         assistantEnabled: true,
+        timeZone: null,
       },
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("POST creates a conversation", async () => {
@@ -75,6 +83,24 @@ describe("AI Conversations API", () => {
     const data = await res.json();
     expect(data.title).toMatch(/^Conversation - /);
     expect(data.title).not.toBe("New conversation");
+  });
+
+  it("POST default title honors the user timezone", async () => {
+    mockSession({
+      user: {
+        id: TEST_USER.id,
+        name: TEST_USER.name,
+        email: TEST_USER.email,
+        role: TEST_USER.role,
+        assistantEnabled: true,
+        timeZone: "America/Los_Angeles",
+      },
+    });
+
+    const res = await listRoute.POST(postReq({ title: "New conversation" }), {});
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.title).toContain("Feb 20, 2026");
   });
 
   it("GET list includes message count and latest preview", async () => {

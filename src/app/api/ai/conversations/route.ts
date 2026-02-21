@@ -10,6 +10,7 @@ import {
 
 export const GET = withAuth(async (_req, session) => {
   const userId = session.user.id;
+  const userTimeZone = session.user.timeZone ?? null;
   const conversations = await db
     .select()
     .from(chatConversations)
@@ -22,7 +23,7 @@ export const GET = withAuth(async (_req, session) => {
 
   const normalizedConversations = conversations.map((conversation) => ({
     ...conversation,
-    title: normalizeConversationTitle(conversation.title, conversation.createdAt),
+    title: normalizeConversationTitle(conversation.title, conversation.createdAt, userTimeZone),
   }));
 
   const ids = normalizedConversations.map((conversation) => conversation.id);
@@ -83,10 +84,11 @@ export const POST = withAuth(async (req, session) => {
   }
 
   const now = new Date().toISOString();
+  const userTimeZone = session.user.timeZone ?? null;
   const resolvedTitle =
     trimmedTitle.length > 0 && !isGenericConversationTitle(trimmedTitle)
       ? trimmedTitle
-      : defaultConversationTitle(new Date(now));
+      : defaultConversationTitle(new Date(now), userTimeZone);
 
   const [conversation] = await db
     .insert(chatConversations)
