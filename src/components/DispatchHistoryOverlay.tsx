@@ -97,9 +97,9 @@ export function DispatchHistoryOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 animate-backdrop-enter" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-xl bg-white dark:bg-neutral-900 shadow-2xl mx-4 overflow-hidden animate-slide-down-fade">
+      <div className="relative mx-3 w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl animate-slide-down-fade dark:bg-neutral-900 sm:mx-4">
         {/* Header */}
-        <div className="border-b border-neutral-200 dark:border-neutral-800 px-6 py-4">
+        <div className="border-b border-neutral-200 px-4 py-4 dark:border-neutral-800 sm:px-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Dispatch History
@@ -117,7 +117,7 @@ export function DispatchHistoryOverlay({
         </div>
 
         {/* Month navigation */}
-        <div className="border-b border-neutral-200 dark:border-neutral-800 px-6 py-4">
+        <div className="border-b border-neutral-200 px-4 py-4 dark:border-neutral-800 sm:px-6">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigateMonth(-1)}
@@ -140,7 +140,7 @@ export function DispatchHistoryOverlay({
         </div>
 
         {/* Calendar grid */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <span className="inline-block w-6 h-6 border-2 border-neutral-300 dark:border-neutral-600 border-t-transparent rounded-full animate-spinner" />
@@ -206,7 +206,7 @@ export function DispatchHistoryOverlay({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-neutral-200 dark:border-neutral-800 px-6 py-4 flex items-center justify-between">
+        <div className="flex flex-col gap-2 border-t border-neutral-200 px-4 py-4 dark:border-neutral-800 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
             <IconCheck className="w-3 h-3 inline text-green-600 dark:text-green-400 mr-1" />
             Finalized

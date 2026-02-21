@@ -122,7 +122,7 @@ export function InsightsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl p-6 space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <div className="h-8 w-56 rounded skeleton-shimmer" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((key) => (
@@ -135,7 +135,7 @@ export function InsightsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6 space-y-6 animate-fade-in-up">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 animate-fade-in-up">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-100 dark:bg-cyan-900/30">

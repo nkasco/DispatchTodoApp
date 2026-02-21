@@ -23,8 +23,8 @@ export default async function AdministrationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6 animate-fade-in-up">
-      <div className="flex items-start justify-between gap-3">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 animate-fade-in-up">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold dark:text-white">Administration</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
@@ -43,4 +43,3 @@ export default async function AdministrationPage() {
     </div>
   );
 }
-

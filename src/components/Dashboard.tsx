@@ -263,7 +263,7 @@ export function Dashboard({ userName }: { userName: string }) {
   if (loading) {
     return (
       <div className="dashboard-warm">
-        <div className="mx-auto max-w-6xl p-6 space-y-5">
+        <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="h-9 w-52 rounded-xl skeleton-shimmer" />
             <div className="h-10 w-40 rounded-xl skeleton-shimmer" />
@@ -284,7 +284,7 @@ export function Dashboard({ userName }: { userName: string }) {
 
   return (
     <div className="dashboard-warm">
-      <div className="mx-auto max-w-6xl p-6 space-y-5">
+      <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100/80 text-cyan-700 shadow-sm dark:bg-cyan-900/30 dark:text-cyan-300">
@@ -296,7 +296,7 @@ export function Dashboard({ userName }: { userName: string }) {
             </div>
           </div>
 
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}

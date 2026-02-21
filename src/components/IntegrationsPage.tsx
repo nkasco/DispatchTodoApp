@@ -300,7 +300,7 @@ export function IntegrationsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-fade-in-up">
+    <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-6 animate-fade-in-up">
       <header className="space-y-3">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Integrations</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">Manage API keys and consume Dispatch endpoints with copy-ready snippets.</p>
@@ -324,14 +324,14 @@ export function IntegrationsPage() {
       </header>
 
       <section className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <IconKey className="w-6 h-6 text-blue-500" />
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">API Keys</h2>
           </div>
           <button
             onClick={() => setShowNewKeyModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 self-start rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 sm:self-auto"
           >
             <IconPlus className="w-4 h-4" />
             Create API Key
@@ -349,9 +349,9 @@ export function IntegrationsPage() {
             {apiKeys.map((key) => (
               <div
                 key={key.id}
-                className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700"
+                className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/50 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <div className="font-medium text-neutral-900 dark:text-white">{key.name}</div>
                     {activeApiKeyId === key.id && (
@@ -360,7 +360,7 @@ export function IntegrationsPage() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
                     <code className="text-sm text-neutral-600 dark:text-neutral-400 font-mono">
                       {key.key.substring(0, 20)}...
                     </code>
@@ -380,7 +380,7 @@ export function IntegrationsPage() {
                     {key.lastUsedAt && ` • Last used ${new Date(key.lastUsedAt).toLocaleDateString()}`}
                   </div>
                 </div>
-                <div className="ml-4 flex items-center gap-2">
+                <div className="ml-0 flex w-full flex-wrap items-center gap-2 sm:ml-4 sm:w-auto sm:justify-end">
                   <button
                     onClick={() => setActiveApiKeyId(key.id)}
                     disabled={activeApiKeyId === key.id}
@@ -473,14 +473,14 @@ export function IntegrationsPage() {
                 </div>
 
                 <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-                  <div className="px-4 py-2 bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-2 dark:border-neutral-700 dark:bg-neutral-800/60">
                     <div className="space-y-0.5">
                       <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Request Snippet</div>
                       <div className="text-xs text-neutral-600 dark:text-neutral-400">
                         {activeApiKey ? `Using active key: ${activeApiKey.name}` : "No active key selected; using YOUR_API_KEY placeholder."}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       <div className="inline-flex rounded-md border border-neutral-300 dark:border-neutral-700 overflow-hidden">
                         <button
                           onClick={() => setSnippetMode("curl")}

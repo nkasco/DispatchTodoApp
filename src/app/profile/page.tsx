@@ -54,7 +54,7 @@ export default async function Profile() {
   const timeZone = currentUserRecord?.timeZone ?? null;
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6 animate-fade-in-up">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 animate-fade-in-up">
       <div>
         <h1 className="text-2xl font-bold dark:text-white">Profile</h1>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">

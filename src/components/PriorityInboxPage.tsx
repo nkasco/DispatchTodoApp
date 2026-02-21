@@ -246,7 +246,7 @@ export function PriorityInboxPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto max-w-5xl p-4 sm:p-6">
         <div className="space-y-4">
           <div className="h-8 w-64 rounded skeleton-shimmer" />
           <div className="h-32 rounded-xl skeleton-shimmer" />
@@ -257,7 +257,7 @@ export function PriorityInboxPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6 animate-fade-in-up">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 animate-fade-in-up">
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
@@ -471,7 +471,7 @@ function InboxTaskRow({
 
   return (
     <div
-      className={`group relative flex items-center gap-3 p-4 transition-all duration-200 ${
+      className={`group relative flex flex-wrap items-start gap-2.5 p-4 transition-all duration-200 sm:items-center sm:gap-3 ${
         index > 0 ? "border-t border-neutral-100 dark:border-neutral-800/50" : ""
       } ${
         task.status === "done" && !isCompleting ? "opacity-60" : ""
@@ -496,7 +496,7 @@ function InboxTaskRow({
         )}
       </button>
 
-      <div className="flex-1 min-w-0">
+      <div className="order-2 min-w-0 basis-[calc(100%-2rem)] sm:order-none sm:flex-1">
         <p
           className={`text-sm font-medium truncate dark:text-white ${
             task.status === "done" && !isCompleting ? "line-through" : ""
@@ -511,7 +511,7 @@ function InboxTaskRow({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="order-3 flex w-full flex-wrap items-center gap-2 sm:order-none sm:w-auto">
         {/* Status badge (only for open/in_progress) */}
         {task.status !== "done" && (
           <button
@@ -559,7 +559,7 @@ function InboxTaskRow({
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+      <div className="order-4 ml-auto flex items-center gap-1.5 opacity-80 transition-opacity group-hover:opacity-100 sm:order-none sm:ml-0">
         {/* Snooze button */}
         <div className="relative">
           <button

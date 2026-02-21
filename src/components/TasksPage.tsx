@@ -350,8 +350,8 @@ export function TasksPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6 animate-fade-in-up">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 animate-fade-in-up">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
             <IconCheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -374,7 +374,7 @@ export function TasksPage() {
             setEditingTask(null);
             setModalOpen(true);
           }}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 active:scale-95 transition-all inline-flex items-center gap-1.5 shadow-sm"
+          className="inline-flex self-start items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-500 active:scale-95 sm:self-auto"
         >
           <IconPlus className="w-4 h-4" />
           New Task
@@ -680,7 +680,7 @@ function TaskRow({
 
   return (
     <li
-      className={`group flex items-center gap-3 p-4 transition-all duration-200 ${
+      className={`group flex flex-wrap items-start gap-2.5 p-4 transition-all duration-200 sm:items-center sm:gap-3 ${
         index > 0 ? "border-t border-neutral-100 dark:border-neutral-800/50" : ""
       } ${
         task.status === "done" && !isCompleting ? "opacity-60" : ""
@@ -704,7 +704,7 @@ function TaskRow({
         )}
       </button>
 
-      <div className="flex-1 min-w-0">
+      <div className="order-2 min-w-0 basis-[calc(100%-2rem)] sm:order-none sm:flex-1">
         <p
           className={`text-sm font-medium truncate dark:text-white ${
             task.status === "done" && !isCompleting ? "line-through" : ""
@@ -719,7 +719,7 @@ function TaskRow({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="order-3 flex w-full flex-wrap items-center gap-2 sm:order-none sm:w-auto">
         {/* Status badge (only for open/in_progress) */}
         {task.status !== "done" && (
           <button
@@ -768,7 +768,7 @@ function TaskRow({
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+      <div className="order-4 ml-auto flex items-center gap-1.5 opacity-80 transition-opacity group-hover:opacity-100 sm:order-none sm:ml-0">
         <button
           onClick={onEdit}
           className="rounded-md px-2 py-1 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-all inline-flex items-center gap-1.5"

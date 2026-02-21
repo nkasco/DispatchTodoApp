@@ -261,15 +261,15 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
 
   if (loading) {
     return (
-      <section className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
         <p className="text-sm text-neutral-600 dark:text-neutral-300">Loading administration controls...</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <section className="space-y-6 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
             <IconShield className="w-4 h-4" />
@@ -522,7 +522,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
                       }))
                     }
                     placeholder="New password (min 8 chars)"
-                    className="min-w-[220px] flex-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/80 px-3 py-2 text-xs text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    className="w-full min-w-0 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:placeholder:text-neutral-500 sm:min-w-[220px] sm:flex-1"
                   />
                   <button
                     onClick={() => {
@@ -585,7 +585,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
           Optional SQLCipher-backed encryption for the SQLite file. Default is off.
         </p>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-neutral-200 dark:bg-neutral-800 px-2 py-1 text-neutral-700 dark:text-neutral-300">
             SQLCipher: {security?.sqlCipherAvailable ? "available" : "not available"}
           </span>
@@ -610,7 +610,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
             onChange={(event) => setEncryptionPassphrase(event.target.value)}
             placeholder="Encryption passphrase"
             disabled={!encryptionEnabled}
-            className="min-w-[260px] flex-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/80 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
+            className="w-full min-w-0 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-100 dark:placeholder:text-neutral-500 sm:min-w-[260px] sm:flex-1"
           />
           <button
             onClick={handleSaveEncryption}

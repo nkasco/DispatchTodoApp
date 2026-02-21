@@ -336,7 +336,7 @@ export function DispatchPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto max-w-5xl p-4 sm:p-6">
         <div className="space-y-4">
           <div className="h-8 w-64 rounded skeleton-shimmer" />
           <div className="h-32 rounded-xl skeleton-shimmer" />
@@ -347,64 +347,62 @@ export function DispatchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       {/* Header with date navigation */}
-      <div className="flex items-center justify-between animate-fade-in-up">
+      <div className="animate-fade-in-up space-y-3">
         <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+            <IconBolt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold dark:text-white">
+              {isToday ? "Today's Dispatch" : "Dispatch"}
+            </h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {formatIsoDateForDisplay(date, {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => navigateDay(-1)}
-            className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-2 py-1 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 dark:text-neutral-300 active:scale-95 transition-all"
+            className="rounded-lg border border-neutral-300 px-2 py-1 text-sm transition-all hover:bg-neutral-50 active:scale-95 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             &larr;
           </button>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-              <IconBolt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold dark:text-white">
-                {isToday ? "Today's Dispatch" : "Dispatch"}
-              </h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                {formatIsoDateForDisplay(date, {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
-            </div>
-          </div>
           <button
             onClick={() => navigateDay(1)}
-            className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-2 py-1 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 dark:text-neutral-300 active:scale-95 transition-all"
+            className="rounded-lg border border-neutral-300 px-2 py-1 text-sm transition-all hover:bg-neutral-50 active:scale-95 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             &rarr;
           </button>
           {!isToday && (
             <button
               onClick={() => setDate(today)}
-              className="rounded-lg bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 dark:text-neutral-200 active:scale-95 transition-all"
+              className="rounded-lg bg-neutral-100 px-3 py-1 text-sm font-medium transition-all hover:bg-neutral-200 active:scale-95 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             >
               Today
             </button>
           )}
           <button
             onClick={() => setShowHistory(true)}
-            className="rounded-lg bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 dark:text-neutral-200 active:scale-95 transition-all inline-flex items-center gap-1.5"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-100 px-3 py-1 text-sm font-medium transition-all hover:bg-neutral-200 active:scale-95 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             title="View dispatch history"
           >
             <IconClock className="w-3.5 h-3.5" />
             History
           </button>
-        </div>
-
-        <div className="flex items-center gap-3">
           {dispatch?.finalized && (
             <button
               onClick={handleUnfinalizeClick}
               disabled={unfinalizing}
-              className="rounded-full bg-green-100 dark:bg-green-900/40 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60 active:scale-95 transition-all inline-flex items-center gap-1.5 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700 transition-all hover:bg-green-200 active:scale-95 disabled:opacity-50 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60"
               title="Click to unfinalize and edit this dispatch"
             >
               <IconCheck className="w-3.5 h-3.5" />
@@ -435,7 +433,7 @@ export function DispatchPage() {
         className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-blue-50 via-white to-emerald-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-950 shadow-sm overflow-hidden animate-fade-in-up"
         style={{ animationDelay: "75ms" }}
       >
-        <div className="p-5 md:p-6 grid gap-6 md:grid-cols-[1.2fr_1fr]">
+        <div className="grid gap-6 p-4 sm:p-5 md:grid-cols-[1.2fr_1fr] md:p-6">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-300">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/20">
@@ -534,7 +532,7 @@ export function DispatchPage() {
       {/* Linked tasks */}
       <section className="animate-fade-in-up" style={{ animationDelay: "150ms" }}>
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-sm">
-          <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800/50 flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800/50">
             <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Tasks</h2>
             <span className="text-xs text-neutral-400 dark:text-neutral-500">
               {doneCount}/{linkedTasks.length} done
@@ -687,7 +685,7 @@ export function DispatchPage() {
           <button
             onClick={handleCompleteClick}
             disabled={completing}
-            className="rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50 active:scale-95 transition-all inline-flex items-center gap-2 shadow-sm"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-green-500 active:scale-95 disabled:opacity-50 sm:w-auto"
           >
             {completing ? (
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spinner" />
@@ -718,7 +716,7 @@ export function DispatchPage() {
               </span>
               . Those tasks will remain on that date if you reopen this dispatch.
             </p>
-            <div className="flex items-center gap-3 justify-end">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 onClick={() => setUnfinalizeWarning(null)}
                 className="rounded-lg px-4 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-all"
@@ -779,7 +777,7 @@ function LinkedTaskRow({
 
   return (
     <div
-      className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 ${
+      className={`group flex flex-wrap items-start gap-2.5 border-b border-neutral-100 px-4 py-3 transition-all duration-200 last:border-0 dark:border-neutral-800/50 sm:items-center sm:gap-3 ${
         task.status === "done" && !isCompleting ? "opacity-60" : ""
       } hover:bg-neutral-50 dark:hover:bg-neutral-800/30`}
     >
@@ -815,7 +813,7 @@ function LinkedTaskRow({
         </button>
       )}
 
-      <div className="flex-1 min-w-0">
+      <div className="order-2 min-w-0 basis-[calc(100%-2rem)] sm:order-none sm:flex-1">
         <p
           className={`text-sm font-medium truncate dark:text-white ${
             task.status === "done" && !isCompleting ? "line-through" : ""
@@ -839,7 +837,7 @@ function LinkedTaskRow({
       {!finalized && (
         <button
           onClick={onUnlink}
-          className="text-xs text-neutral-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 active:scale-95 transition-all"
+          className="ml-auto text-xs text-neutral-400 opacity-100 transition-all hover:text-red-500 active:scale-95 dark:hover:text-red-400 sm:ml-0 sm:opacity-0 sm:group-hover:opacity-100"
           title="Remove from dispatch"
         >
           Remove

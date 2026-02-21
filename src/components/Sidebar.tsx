@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -33,6 +33,8 @@ import {
 interface SidebarProps {
   onSearchOpen: () => void;
   onShortcutHelp: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
 interface NavItem {
@@ -54,7 +56,7 @@ const WORKSPACE_NAV: NavItem[] = [
   { href: "/recycle-bin", label: "Recycle Bin", icon: IconTrash },
 ];
 
-export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
+export function Sidebar({ onSearchOpen, onShortcutHelp, mobileOpen, onMobileClose }: SidebarProps) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -73,6 +75,7 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
   );
 
   const [collapsed, setCollapsed] = useState(false);
+  const mobileCollapsedOverrideRef = useRef(false);
   const [sectionsOpen, setSectionsOpen] = useState<Record<string, boolean>>(
     defaultSectionsOpen,
   );
@@ -122,6 +125,19 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
   useEffect(() => {
     localStorage.setItem("sidebar-sections-open", JSON.stringify(sectionsOpen));
   }, [sectionsOpen]);
+
+  useEffect(() => {
+    if (mobileOpen && collapsed) {
+      mobileCollapsedOverrideRef.current = true;
+      setCollapsed(false);
+      return;
+    }
+
+    if (!mobileOpen && mobileCollapsedOverrideRef.current) {
+      mobileCollapsedOverrideRef.current = false;
+      setCollapsed(true);
+    }
+  }, [mobileOpen, collapsed]);
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -194,7 +210,10 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
       key: "search",
       label: "Search",
       icon: IconSearch,
-      onClick: onSearchOpen,
+      onClick: () => {
+        onSearchOpen();
+        onMobileClose();
+      },
     },
   ];
   const quickActionClassName =
@@ -202,8 +221,10 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
 
   return (
     <aside
-      className={`flex flex-col bg-neutral-950 text-neutral-400 transition-all duration-300 ease-in-out h-screen flex-shrink-0 border-r border-neutral-800/50 ${
-        collapsed ? "w-16" : "w-64"
+      className={`fixed inset-y-0 left-0 z-[130] flex h-[100dvh] flex-col border-r border-neutral-800/50 bg-neutral-950 text-neutral-400 transition-[transform,width] duration-300 ease-in-out xl:static xl:z-auto xl:h-screen xl:translate-x-0 ${
+        mobileOpen ? "translate-x-0 shadow-2xl shadow-black/40 xl:shadow-none" : "-translate-x-full"
+      } ${
+        collapsed ? "w-64 xl:w-16" : "w-64"
       }`}
     >
       {/* Brand */}
@@ -231,10 +252,18 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
         </Link>
         <button
           onClick={toggleCollapsed}
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-neutral-500 hover:bg-neutral-800/40 hover:text-neutral-300 transition-colors flex-shrink-0"
+          className="hidden h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-800/40 hover:text-neutral-300 xl:flex"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <IconList className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-800/40 hover:text-neutral-300 xl:hidden"
+          aria-label="Close navigation"
+        >
+          <IconPlus className="h-4.5 w-4.5 rotate-45" />
         </button>
       </div>
 
@@ -527,7 +556,10 @@ export function Sidebar({ onSearchOpen, onShortcutHelp }: SidebarProps) {
               {/* Shortcuts */}
               <li>
                 <button
-                  onClick={onShortcutHelp}
+                  onClick={() => {
+                    onShortcutHelp();
+                    onMobileClose();
+                  }}
                   title={collapsed ? "Shortcuts" : undefined}
                   className={`flex items-center w-full rounded-lg py-2 text-sm text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200 transition-colors ${
                     collapsed ? "justify-center" : "gap-3 px-3"

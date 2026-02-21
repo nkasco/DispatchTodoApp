@@ -89,7 +89,7 @@ export function RecycleBinPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export function RecycleBinPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {(["all", "task", "note", "project"] as const).map((t) => (
           <button
             key={t}
@@ -156,7 +156,7 @@ export function RecycleBinPage() {
             return (
               <div
                 key={`${item.type}-${item.id}`}
-                className={`flex items-center gap-4 px-5 py-4 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50 ${
+                className={`flex flex-col items-start gap-3 px-4 py-4 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50 sm:flex-row sm:items-center sm:gap-4 sm:px-5 ${
                   idx > 0 ? "border-t border-neutral-100 dark:border-neutral-800" : ""
                 } ${isActing ? "opacity-50 pointer-events-none" : ""}`}
               >
@@ -182,7 +182,7 @@ export function RecycleBinPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-shrink-0 sm:justify-end">
                   <button
                     onClick={() => handleRestore(item)}
                     disabled={isActing}

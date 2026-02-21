@@ -190,7 +190,7 @@ export function AssistantPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl p-6">
+      <div className="mx-auto max-w-7xl p-4 sm:p-6">
         <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
           <div className="space-y-3">
             <div className="h-10 rounded-xl skeleton-shimmer" />
@@ -208,7 +208,7 @@ export function AssistantPage() {
 
   if (!config) {
     return (
-      <div className="mx-auto max-w-3xl p-6">
+      <div className="mx-auto max-w-3xl p-4 sm:p-6">
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-8 shadow-sm text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/40">
             <IconSparkles className="w-6 h-6 text-blue-600 dark:text-blue-300" />
@@ -229,7 +229,7 @@ export function AssistantPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
