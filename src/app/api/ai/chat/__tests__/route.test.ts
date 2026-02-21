@@ -4,6 +4,7 @@ import { createTestDb } from "@/test/db";
 import { mockSession } from "@/test/setup";
 import { aiConfigs, chatConversations, chatMessages, users } from "@/db/schema";
 import { encryptAiApiKey } from "@/lib/ai-encryption";
+import { getIsoDateForTimeZone } from "@/lib/timezone";
 
 let testDb: ReturnType<typeof createTestDb>;
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || "dispatch-test-secret";
@@ -46,6 +47,7 @@ const TEST_USER = {
   role: "member" as const,
   showAdminQuickAccess: true,
   assistantEnabled: true,
+  timeZone: "America/Los_Angeles",
 };
 
 function chatReq(body: unknown) {
@@ -116,8 +118,9 @@ describe("AI Chat API", () => {
     expect(res.status).toBe(200);
     expect(streamTextMock).toHaveBeenCalledTimes(1);
     const call = streamTextMock.mock.calls[0]?.[0] as { system?: string } | undefined;
+    const todayForUser = getIsoDateForTimeZone(new Date(), TEST_USER.timeZone);
     expect(call?.system).toContain("You are Dispatch Personal Assistant");
-    expect(call?.system).toContain(`Today is ${new Date().toISOString().slice(0, 10)} (UTC).`);
+    expect(call?.system).toContain(`Today is ${todayForUser} (${TEST_USER.timeZone}).`);
     expect(call?.system).toContain("Scope: help with Dispatch tasks, notes, projects, dispatches, and search.");
 
     await new Promise((resolve) => setTimeout(resolve, 0));

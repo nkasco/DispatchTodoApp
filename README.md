@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&height=240&color=0:0a1020,35:12244a,70:1d4ed8,100:7c3aed&text=Dispatch&fontSize=70&fontColor=ffffff&fontAlignY=40&desc=A%20polished%20local-first%20workspace%20for%20tasks%2C%20projects%2C%20notes%2C%20and%20daily%20planning.&descSize=18&descAlignY=62&animation=fadeIn" alt="Dispatch banner" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&height=240&color=0:0a1020,35:12244a,70:1d4ed8,100:7c3aed&text=Dispatch&fontSize=70&fontColor=ffffff&fontAlignY=40&desc=A%20self-hosted%20task%20app%20that%20you'll%20love%20using.&descSize=18&descAlignY=62&animation=fadeIn" alt="Dispatch banner" />
   <br />
   <a href="https://github.com/nkasco/DispatchTodoApp"><img alt="Version" src="https://img.shields.io/github/package-json/v/nkasco/DispatchTodoApp?style=for-the-badge&label=Version&color=f59e0b" /></a>
   <a href="https://github.com/nkasco/DispatchTodoApp/pkgs/container/dispatchtodoapp"><img alt="Docker Pulls" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Fnkasco%2FDispatchTodoApp%2Fdispatchtodoapp&query=%24.downloadCount&label=Docker%20Pulls&color=0ea5e9&style=for-the-badge" /></a>
@@ -23,10 +23,19 @@
 
 | | |
 | --- | --- |
-| **Local-first by default** | Your data stays on your machine in SQLite (`dispatch.db`). |
+| **Runs locally (Docker/Node) with SQLite on the host.** | Next.js + Node server runtime with SQLite data persisted on the host (`dispatch.db`) or Docker volume. |
 | **One workspace for everything** | Tasks, projects, notes, and dispatches stay connected. |
 | **Keyboard-friendly UX** | Fast actions, global search, and shortcut support keep flow uninterrupted. |
 | **Built for real execution** | Deadline focus, progress rollups, and upcoming work are always visible. |
+
+## Runtime and Storage Model
+
+Runs locally (Docker/Node) with SQLite on the host.
+
+- Dispatch requires a server runtime (Next.js + Node) to function.
+- Data is stored in a SQLite database file on the host machine (or Docker volume when containerized).
+- The browser acts as a client only.
+- Dispatch does not use IndexedDB or browser-based primary storage, and it is not a purely client-side PWA.
 
 ## Feature Tour
 

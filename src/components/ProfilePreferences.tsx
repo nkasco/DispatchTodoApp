@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/ToastProvider";
 import { api, type AIConfig, type AIModelInfo, type AIProvider } from "@/lib/client";
 import { IconKey, IconMoon, IconSparkles, IconSun } from "@/components/icons";
 import { CustomSelect } from "@/components/CustomSelect";
+import { isValidTimeZone } from "@/lib/timezone";
 
 const PROVIDER_OPTIONS: Array<{ value: AIProvider; label: string }> = [
   { value: "openai", label: "OpenAI" },
@@ -35,14 +36,41 @@ const DEFAULT_MODEL: Record<AIProvider, string> = {
   custom: "gpt-4o-mini",
 };
 
+const COMMON_TIME_ZONES = [
+  "UTC",
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "America/Toronto",
+  "America/Mexico_City",
+  "America/Sao_Paulo",
+  "Europe/London",
+  "Europe/Berlin",
+  "Europe/Paris",
+  "Europe/Madrid",
+  "Europe/Rome",
+  "Europe/Amsterdam",
+  "Europe/Stockholm",
+  "Europe/Helsinki",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "Pacific/Auckland",
+];
+
 export function ProfilePreferences({
   isAdmin = false,
   showAdminQuickAccess = true,
   assistantEnabled = true,
+  timeZone = null,
 }: {
   isAdmin?: boolean;
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
+  timeZone?: string | null;
 }) {
   const { theme, toggleTheme } = useTheme();
   const { update } = useSession();
@@ -52,6 +80,16 @@ export function ProfilePreferences({
   const [assistantVisible, setAssistantVisible] = useState(assistantEnabled);
   const [savingAdminButtonPref, setSavingAdminButtonPref] = useState(false);
   const [savingAssistantVisibility, setSavingAssistantVisibility] = useState(false);
+  const [timezoneValue, setTimezoneValue] = useState(timeZone ?? "");
+  const [timeZoneOptions, setTimeZoneOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: "", label: "System default (auto)" },
+  ]);
+  const [timeZonePickerOpen, setTimeZonePickerOpen] = useState(false);
+  const [timeZoneHighlightIndex, setTimeZoneHighlightIndex] = useState(0);
+  const timeZonePickerRef = useRef<HTMLDivElement>(null);
+  const [savingTimeZone, setSavingTimeZone] = useState(false);
+  const [detectedSystemTimeZone, setDetectedSystemTimeZone] = useState<string | null>(null);
+  const autoAppliedSystemTimeZoneRef = useRef(false);
 
   const [aiLoading, setAiLoading] = useState(true);
   const [aiSaving, setAiSaving] = useState(false);
@@ -86,6 +124,61 @@ export function ProfilePreferences({
     () => models.map((entry) => ({ value: entry.id, label: entry.label })),
     [models],
   );
+  const filteredTimeZoneOptions = useMemo(() => {
+    const query = timezoneValue.trim().toLowerCase();
+    if (!query) return timeZoneOptions;
+
+    return timeZoneOptions.filter((option) => option.label.toLowerCase().includes(query));
+  }, [timeZoneOptions, timezoneValue]);
+
+  useEffect(() => {
+    setTimezoneValue(timeZone ?? "");
+  }, [timeZone]);
+
+  useEffect(() => {
+    try {
+      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (detected && isValidTimeZone(detected)) {
+        setDetectedSystemTimeZone(detected);
+      }
+    } catch {
+      setDetectedSystemTimeZone(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const hasSupportedValuesOf = typeof Intl.supportedValuesOf === "function";
+    const discovered = hasSupportedValuesOf ? Intl.supportedValuesOf("timeZone") : COMMON_TIME_ZONES;
+
+    const uniqueZones = new Set<string>(discovered);
+    if (detectedSystemTimeZone) uniqueZones.add(detectedSystemTimeZone);
+    if (timeZone) uniqueZones.add(timeZone);
+
+    const sorted = Array.from(uniqueZones).sort((a, b) => a.localeCompare(b));
+    setTimeZoneOptions([
+      { value: "", label: "System default (auto)" },
+      ...sorted.map((zone) => ({ value: zone, label: zone })),
+    ]);
+  }, [detectedSystemTimeZone, timeZone]);
+
+  useEffect(() => {
+    if (!timeZonePickerOpen) return;
+
+    function handleOutsideClick(event: MouseEvent) {
+      if (timeZonePickerRef.current && !timeZonePickerRef.current.contains(event.target as Node)) {
+        setTimeZonePickerOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [timeZonePickerOpen]);
+
+  useEffect(() => {
+    setTimeZoneHighlightIndex(0);
+  }, [timezoneValue]);
 
   const loadConfig = useCallback(async () => {
     setAiLoading(true);
@@ -197,6 +290,84 @@ export function ProfilePreferences({
       setSavingAssistantVisibility(false);
     }
   }
+
+  const saveTimeZone = useCallback(async (nextTimeZone: string | null, options?: { silent?: boolean }) => {
+    setSavingTimeZone(true);
+    try {
+      const updated = await api.me.updatePreferences({ timeZone: nextTimeZone });
+      setTimezoneValue(updated.timeZone ?? "");
+      await update();
+      if (!options?.silent) {
+        toast.success(updated.timeZone ? `Timezone set to ${updated.timeZone}` : "Timezone cleared");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update timezone");
+    } finally {
+      setSavingTimeZone(false);
+    }
+  }, [toast, update]);
+
+  const handleSaveTimeZone = useCallback(async () => {
+    const trimmed = timezoneValue.trim();
+    if (!trimmed) {
+      await saveTimeZone(null);
+      return;
+    }
+
+    if (!isValidTimeZone(trimmed)) {
+      toast.error("Enter a valid IANA timezone (for example: America/Los_Angeles)");
+      return;
+    }
+
+    await saveTimeZone(trimmed);
+  }, [saveTimeZone, timezoneValue, toast]);
+
+  const handleTimeZoneInputKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!timeZonePickerOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      event.preventDefault();
+      setTimeZonePickerOpen(true);
+      return;
+    }
+
+    if (!timeZonePickerOpen) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setTimeZoneHighlightIndex((previous) => Math.min(previous + 1, Math.max(filteredTimeZoneOptions.length - 1, 0)));
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setTimeZoneHighlightIndex((previous) => Math.max(previous - 1, 0));
+      return;
+    }
+
+    if (event.key === "Enter") {
+      const highlighted = filteredTimeZoneOptions[timeZoneHighlightIndex];
+      if (highlighted) {
+        event.preventDefault();
+        setTimezoneValue(highlighted.value);
+        setTimeZonePickerOpen(false);
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setTimeZonePickerOpen(false);
+    }
+  }, [filteredTimeZoneOptions, timeZoneHighlightIndex, timeZonePickerOpen]);
+
+  useEffect(() => {
+    if (autoAppliedSystemTimeZoneRef.current) return;
+    if (!detectedSystemTimeZone) return;
+    if ((timeZone ?? "").trim().length > 0) return;
+
+    autoAppliedSystemTimeZoneRef.current = true;
+    setTimezoneValue(detectedSystemTimeZone);
+    void saveTimeZone(detectedSystemTimeZone, { silent: true });
+  }, [detectedSystemTimeZone, saveTimeZone, timeZone]);
 
   async function handleSaveAiConfig() {
     if (aiReadOnly) {
@@ -332,6 +503,73 @@ export function ProfilePreferences({
           >
             {assistantVisible ? "Enabled" : "Hidden"}
           </button>
+        </div>
+
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-3 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Timezone</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">
+              Used for “today” calculations across Dispatch and Assistant date context.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div ref={timeZonePickerRef} className="relative">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                Timezone
+              </label>
+              <input
+                type="text"
+                value={timezoneValue}
+                onChange={(event) => {
+                  setTimezoneValue(event.target.value);
+                  setTimeZonePickerOpen(true);
+                }}
+                onFocus={() => setTimeZonePickerOpen(true)}
+                onKeyDown={handleTimeZoneInputKeyDown}
+                placeholder="System default (auto)"
+                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+              />
+              {timeZonePickerOpen && (
+                <div
+                  className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg animate-fade-in-up"
+                  style={{ animationDuration: "0.15s" }}
+                >
+                  {filteredTimeZoneOptions.length > 0 ? (
+                    filteredTimeZoneOptions.map((option, index) => (
+                      <button
+                        key={`${option.value || "system-default"}-${index}`}
+                        type="button"
+                        onMouseEnter={() => setTimeZoneHighlightIndex(index)}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          setTimezoneValue(option.value);
+                          setTimeZonePickerOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                          index === timeZoneHighlightIndex
+                            ? "bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                            : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700/50"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">
+                      No matching timezones.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => void handleSaveTimeZone()}
+              disabled={savingTimeZone}
+              className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60 transition-all active:scale-95"
+            >
+              {savingTimeZone ? "Saving..." : "Save"}
+            </button>
+          </div>
         </div>
 
         {isAdmin && (

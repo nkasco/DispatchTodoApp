@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   api,
@@ -12,6 +13,7 @@ import {
 import { buildDailyPoints } from "@/lib/insights";
 import { useDashboardLayout, type DashboardWidgetId } from "@/lib/dashboard-layout";
 import { PROJECT_COLORS } from "@/lib/projects";
+import { addDaysToIsoDate, getIsoDateForTimeZone } from "@/lib/timezone";
 import { DashboardCustomizePanel } from "@/components/dashboard/DashboardCustomizePanel";
 import { PriorityDistribution } from "@/components/dashboard/PriorityDistribution";
 import { ProjectProgressRings } from "@/components/dashboard/ProjectProgressRings";
@@ -81,6 +83,7 @@ type WidgetData = {
 };
 
 export function Dashboard({ userName }: { userName: string }) {
+  const { data: session } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
@@ -125,11 +128,9 @@ export function Dashboard({ userName }: { userName: string }) {
   const doneTasks = tasks.filter((task) => task.status === "done");
   const activeTasks = tasks.filter((task) => task.status !== "done");
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getIsoDateForTimeZone(new Date(), session?.user?.timeZone ?? null);
   const focusWindowDays = 7;
-  const focusEnd = new Date();
-  focusEnd.setDate(focusEnd.getDate() + focusWindowDays);
-  const focusEndIso = focusEnd.toISOString().split("T")[0];
+  const focusEndIso = addDaysToIsoDate(today, focusWindowDays);
 
   const overdue = tasks.filter(
     (task) => task.dueDate && task.dueDate < today && task.status !== "done",

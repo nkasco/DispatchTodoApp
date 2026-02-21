@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSession } from "next-auth/react";
 import {
   api,
   type Task,
@@ -11,6 +12,7 @@ import {
 import { useToast } from "@/components/ToastProvider";
 import { IconInbox, IconClock, IconTrash } from "@/components/icons";
 import { PROJECT_COLORS } from "@/lib/projects";
+import { addDaysToIsoDate, formatIsoDateForDisplay, getIsoDateForTimeZone } from "@/lib/timezone";
 
 const STATUS_STYLES: Record<TaskStatus, { dot: string; label: string; ring: string }> = {
   open: { dot: "bg-blue-500", label: "Open", ring: "text-blue-500" },
@@ -32,21 +34,9 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = {
 
 const COMPLETE_DISMISS_MS = 420;
 
-function todayStr() {
-  return new Date().toISOString().split("T")[0];
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
 export function PriorityInboxPage() {
   const { toast } = useToast();
+  const { data: session } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +46,7 @@ export function PriorityInboxPage() {
   const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const today = todayStr();
+  const today = getIsoDateForTimeZone(new Date(), session?.user?.timeZone ?? null);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -214,9 +204,7 @@ export function PriorityInboxPage() {
 
     let newDueDate: string | null = null;
     if (days !== null) {
-      const date = new Date();
-      date.setDate(date.getDate() + days);
-      newDueDate = date.toISOString().split("T")[0];
+      newDueDate = addDaysToIsoDate(today, days);
     }
 
     setTasks((prev) =>
@@ -277,7 +265,13 @@ export function PriorityInboxPage() {
           <div>
             <h1 className="text-2xl font-bold dark:text-white">Priority Inbox</h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              {formatDate(today)} &middot; {totalCount} {totalCount === 1 ? "item" : "items"} need attention
+              {formatIsoDateForDisplay(today, {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}{" "}
+              &middot; {totalCount} {totalCount === 1 ? "item" : "items"} need attention
             </p>
           </div>
         </div>

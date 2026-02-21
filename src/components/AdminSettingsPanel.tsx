@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { api, type AdminSecuritySettings, type AdminUser, type UserRole } from "@/lib/client";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { api, type AdminSecuritySettings, type AdminUser, type AdminVersionStatus, type UserRole } from "@/lib/client";
 import { useToast } from "@/components/ToastProvider";
 import { CustomSelect } from "@/components/CustomSelect";
-import { IconChevronDown, IconKey, IconShield, IconTrash } from "@/components/icons";
+import { IconCheckCircle, IconChevronDown, IconClock, IconKey, IconShield, IconTrash } from "@/components/icons";
 
 interface AdminSettingsPanelProps {
   currentUserId: string;
@@ -17,11 +17,76 @@ type CreateUserForm = {
   role: UserRole;
 };
 
+function formatTimestamp(value: string | null): string {
+  if (!value) return "Unknown";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
+}
+
+function getVersionStatusUi(status: AdminVersionStatus | null) {
+  if (!status) {
+    return {
+      label: "Status Unavailable",
+      detail: "The current version status is not available yet.",
+      pillClass:
+        "border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300",
+      panelClass:
+        "border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/50 text-neutral-700 dark:text-neutral-300",
+    };
+  }
+
+  if (status.comparison === "up_to_date") {
+    return {
+      label: "Up to Date",
+      detail: "This installation matches the latest published version.",
+      pillClass:
+        "border-emerald-300 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
+      panelClass:
+        "border-emerald-200 dark:border-emerald-900 bg-emerald-50/80 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-200",
+    };
+  }
+
+  if (status.comparison === "behind") {
+    return {
+      label: "Update Available",
+      detail: "A newer published version is available on GitHub.",
+      pillClass:
+        "border-amber-300 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+      panelClass:
+        "border-amber-200 dark:border-amber-900 bg-amber-50/80 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200",
+    };
+  }
+
+  if (status.comparison === "ahead") {
+    return {
+      label: "Ahead of Latest Release",
+      detail: "This instance is running a version newer than the latest published release.",
+      pillClass:
+        "border-sky-300 dark:border-sky-700 bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300",
+      panelClass:
+        "border-sky-200 dark:border-sky-900 bg-sky-50/80 dark:bg-sky-950/20 text-sky-800 dark:text-sky-200",
+    };
+  }
+
+  return {
+    label: "Status Unknown",
+    detail: "Dispatch could not determine whether this instance is up to date.",
+    pillClass:
+      "border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300",
+    panelClass:
+      "border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/50 text-neutral-700 dark:text-neutral-300",
+  };
+}
+
 export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
   const { toast } = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [security, setSecurity] = useState<AdminSecuritySettings | null>(null);
+  const [versionStatus, setVersionStatus] = useState<AdminVersionStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [versionLoading, setVersionLoading] = useState(true);
+  const [versionRefreshing, setVersionRefreshing] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState<CreateUserForm>({
     name: "",
@@ -43,8 +108,9 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
     ],
     [],
   );
+  const versionUi = useMemo(() => getVersionStatusUi(versionStatus), [versionStatus]);
 
-  async function refreshAll() {
+  const refreshAll = useCallback(async () => {
     setLoading(true);
     try {
       const [nextUsers, nextSecurity] = await Promise.all([
@@ -60,11 +126,33 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [toast]);
+
+  const refreshVersionStatus = useCallback(async (showToastOnError: boolean, showLoadingSkeleton: boolean = false) => {
+    if (showLoadingSkeleton) {
+      setVersionLoading(true);
+    }
+    setVersionRefreshing(true);
+    try {
+      const nextStatus = await api.admin.getVersionStatus();
+      setVersionStatus(nextStatus);
+      if (nextStatus.error && showToastOnError) {
+        toast.info(nextStatus.error);
+      }
+    } catch (error) {
+      if (showToastOnError) {
+        toast.error(error instanceof Error ? error.message : "Failed to load version status");
+      }
+    } finally {
+      setVersionLoading(false);
+      setVersionRefreshing(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     void refreshAll();
-  }, []);
+    void refreshVersionStatus(false, true);
+  }, [refreshAll, refreshVersionStatus]);
 
   async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -194,6 +282,104 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
         <span className="inline-flex items-center gap-1 rounded-full border border-red-300/80 dark:border-red-800/70 bg-red-100/90 dark:bg-red-900/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-red-700 dark:text-red-300">
           Administrator Access
         </span>
+      </div>
+
+      <div className="relative overflow-hidden rounded-lg border border-sky-200 dark:border-sky-900/60 bg-gradient-to-br from-sky-50 via-white to-emerald-50 dark:from-sky-950/35 dark:via-neutral-900 dark:to-emerald-950/20 p-4 space-y-3">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-sky-300/30 blur-2xl dark:bg-sky-500/20" />
+        <div className="relative flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+              <IconCheckCircle className="w-4 h-4" />
+              Platform Version Status
+            </h3>
+            <p className="text-xs text-neutral-600 dark:text-neutral-300 mt-1">
+              Compare this running instance against the latest published Dispatch release.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void refreshVersionStatus(true);
+            }}
+            disabled={versionRefreshing}
+            className="rounded-lg border border-sky-300/80 dark:border-sky-800 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300 bg-white/70 dark:bg-sky-950/30 hover:bg-white dark:hover:bg-sky-900/40 disabled:opacity-60"
+          >
+            {versionRefreshing ? "Checking..." : "Refresh"}
+          </button>
+        </div>
+
+        {versionLoading ? (
+          <div className="space-y-2 animate-pulse">
+            <div className="h-10 rounded-lg bg-white/70 dark:bg-neutral-800/60" />
+            <div className="h-10 rounded-lg bg-white/70 dark:bg-neutral-800/60" />
+          </div>
+        ) : (
+          <div className="relative space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-sky-200 dark:border-sky-900/70 bg-sky-50/70 dark:bg-sky-950/30 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-[0.08em] text-sky-700 dark:text-sky-300">Running</p>
+                <p className="mt-1 text-sm font-semibold text-sky-900 dark:text-sky-100">v{versionStatus?.runningVersion ?? "unknown"}</p>
+              </div>
+              <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/70 bg-emerald-50/70 dark:bg-emerald-950/30 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-[0.08em] text-emerald-700 dark:text-emerald-300">Latest Published</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                  {versionStatus?.latestVersion ? `v${versionStatus.latestVersion}` : "Unavailable"}
+                </p>
+              </div>
+            </div>
+
+            <div className={`rounded-lg border px-3 py-2 ${versionUi.panelClass}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${versionUi.pillClass}`}>
+                  {versionUi.label}
+                </span>
+                <span className="text-xs">{versionUi.detail}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="inline-flex items-center gap-1">
+                  <IconClock className="w-3.5 h-3.5" />
+                  Checked: {formatTimestamp(versionStatus?.checkedAt ?? null)}
+                </span>
+                {versionStatus?.publishedAt && (
+                  <span className="inline-flex items-center gap-1">
+                    <IconClock className="w-3.5 h-3.5" />
+                    Published: {formatTimestamp(versionStatus.publishedAt)}
+                  </span>
+                )}
+              </div>
+              {versionStatus?.error && (
+                <p className="mt-2 text-xs text-red-700 dark:text-red-300">
+                  {versionStatus.error}
+                </p>
+              )}
+              {versionStatus?.comparison === "behind" && (
+                <div className="mt-3 rounded-md border border-amber-300/80 dark:border-amber-800/70 bg-amber-100/70 dark:bg-amber-900/30 p-2.5 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                  <p className="font-medium">Update available. Pull the latest version:</p>
+                  <p>
+                    <code className="rounded bg-white/70 dark:bg-neutral-900/70 px-1.5 py-0.5">./dispatch.sh pull</code>
+                    {" "}or{" "}
+                    <code className="rounded bg-white/70 dark:bg-neutral-900/70 px-1.5 py-0.5">.\dispatch.ps1 pull</code>
+                  </p>
+                </div>
+              )}
+              {versionStatus?.latestReleaseUrl && (
+                <div className="mt-3 flex justify-end">
+                  <a
+                    href={versionStatus.latestReleaseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 hover:no-underline"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                    </svg>
+                    View latest on GitHub
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-950/40 p-4">

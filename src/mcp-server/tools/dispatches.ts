@@ -2,17 +2,25 @@ import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { db } from "@/db";
-import { dispatches, dispatchTasks, tasks } from "@/db/schema";
+import { dispatches, dispatchTasks, tasks, users } from "@/db/schema";
 import { requireUserId, textResult } from "@/mcp-server/tools/context";
+import { addDaysToIsoDate, getIsoDateForTimeZone } from "@/lib/timezone";
 
-function todayISODate(): string {
-  return new Date().toISOString().split("T")[0];
+async function getUserTimeZone(userId: string): Promise<string | null> {
+  const [user] = await db
+    .select({ timeZone: users.timeZone })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return user?.timeZone ?? null;
+}
+
+function todayISODate(timeZone?: string | null): string {
+  return getIsoDateForTimeZone(new Date(), timeZone ?? null);
 }
 
 function nextDate(date: string): string {
-  const d = new Date(`${date}T00:00:00`);
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split("T")[0];
+  return addDaysToIsoDate(date, 1);
 }
 
 async function getOrCreateDispatch(userId: string, date: string) {
@@ -45,7 +53,8 @@ export function registerDispatchTools(server: McpServer) {
     },
     async (_args, extra) => {
       const userId = requireUserId(extra);
-      const dispatch = await getOrCreateDispatch(userId, todayISODate());
+      const userTimeZone = await getUserTimeZone(userId);
+      const dispatch = await getOrCreateDispatch(userId, todayISODate(userTimeZone));
       return textResult("Today's dispatch loaded.", { dispatch });
     },
   );
@@ -61,6 +70,7 @@ export function registerDispatchTools(server: McpServer) {
     },
     async (args, extra) => {
       const userId = requireUserId(extra);
+      const userTimeZone = await getUserTimeZone(userId);
       const dispatch = args.dispatchId
         ? await (async () => {
             const [row] = await db
@@ -70,7 +80,7 @@ export function registerDispatchTools(server: McpServer) {
               .limit(1);
             return row ?? null;
           })()
-        : await getOrCreateDispatch(userId, todayISODate());
+        : await getOrCreateDispatch(userId, todayISODate(userTimeZone));
 
       if (!dispatch) throw new Error("Dispatch not found.");
       if (dispatch.finalized) throw new Error("Cannot update summary on a finalized dispatch.");

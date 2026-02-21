@@ -14,6 +14,7 @@ export const users = sqliteTable("user", {
   password: text("password"), // hashed password for local accounts
   role: text("role", { enum: ["member", "admin"] }).notNull().default("member"),
   frozenAt: text("frozenAt"),
+  timeZone: text("timeZone"),
   showAdminQuickAccess: integer("showAdminQuickAccess", { mode: "boolean" })
     .notNull()
     .default(true),

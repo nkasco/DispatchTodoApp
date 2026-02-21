@@ -1,6 +1,6 @@
 {
   "name": "dispatch",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "scripts": {
     "dev": "concurrently -k -n NEXT,MCP -c cyan,magenta \"npm run next:dev\" \"npm run mcp:dev\"",

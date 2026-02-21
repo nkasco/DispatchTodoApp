@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Dispatch production launcher.
 
@@ -8,7 +8,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("setup", "start", "stop", "restart", "logs", "status", "down", "pull", "help", "version", "")]
+    [ValidateSet("setup", "start", "stop", "restart", "logs", "status", "down", "pull", "freshstart", "updateself", "help", "version", "")]
     [string]$Command = ""
 )
 
@@ -16,10 +16,18 @@ $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $ScriptRoot = $PSScriptRoot
+$ScriptFilePath = Join-Path $ScriptRoot "dispatch.ps1"
 $EnvFilePath = Join-Path $ScriptRoot ".env.prod"
+$RepoOwner = "nkasco"
+$RepoName = "DispatchTodoApp"
+$RepoApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName"
+$ScriptRepoPath = "dispatch.ps1"
 
 $PackageJson = Get-Content -Raw -Path (Join-Path $ScriptRoot "package.json") | ConvertFrom-Json
 $Version = $PackageJson.version
+$RawAppName = if ($PackageJson.name) { [string]$PackageJson.name } else { "dispatch" }
+$AppName = (Get-Culture).TextInfo.ToTitleCase(($RawAppName -replace "[-_]+", " ").ToLowerInvariant())
+$VersionMoniker = "$AppName v$Version"
 
 function Write-CyanLn { param([string]$Text) Write-Host $Text -ForegroundColor Cyan }
 function Write-DimLn { param([string]$Text) Write-Host $Text -ForegroundColor DarkGray }
@@ -41,7 +49,7 @@ function Show-Logo {
         Write-Host $line.Text -ForegroundColor $line.Color
     }
     Write-Host ""
-    Write-DimLn "  v$Version - Docker production launcher"
+    Write-DimLn "  $VersionMoniker - Docker production launcher"
     Write-Host ""
 }
 
@@ -59,12 +67,14 @@ function Show-Help {
     Write-Host "    logs       Follow Dispatch logs"
     Write-Host "    status     Show container status"
     Write-Host "    pull       Pull latest image and restart"
+    Write-Host "    freshstart Remove containers and volumes, then start fresh"
     Write-Host "    down       Stop and remove containers/network"
+    Write-Host "    updateself Download the latest version of this launcher from GitHub"
     Write-Host "    version    Show version number"
     Write-Host "    help       Show this help message"
     Write-Host ""
     Write-DimLn "  Production config is stored in .env.prod"
-    Write-DimLn "  Developer workflow (npm build/test/dev) moved to .\dispatch-dev.ps1"
+    Write-DimLn "  Developer workflow (npm build/test/dev): .\scripts\launchers\dispatch-dev.ps1"
     Write-Host ""
 }
 
@@ -214,6 +224,38 @@ function Run-Compose {
     }
 }
 
+function Get-RepoDefaultBranch {
+    try {
+        $repo = Invoke-RestMethod -Method Get -Uri $RepoApiUrl -Headers @{ "User-Agent" = "DispatchLauncher" }
+        if ($repo -and $repo.default_branch) {
+            return [string]$repo.default_branch
+        }
+    } catch {
+        # Fallback handled below.
+    }
+
+    return "main"
+}
+
+function Get-ComposeProjectName {
+    if ($env:COMPOSE_PROJECT_NAME -and $env:COMPOSE_PROJECT_NAME.Trim().Length -gt 0) {
+        return $env:COMPOSE_PROJECT_NAME.Trim().ToLowerInvariant()
+    }
+
+    return (Split-Path -Path $ScriptRoot -Leaf).ToLowerInvariant()
+}
+
+function Remove-AssociatedComposeVolumes {
+    $projectName = Get-ComposeProjectName
+    $volumeNames = @(docker volume ls --filter "label=com.docker.compose.project=$projectName" --format "{{.Name}}" |
+            Where-Object { $_ -and $_.Trim().Length -gt 0 })
+
+    if ($volumeNames.Count -gt 0) {
+        Write-DimLn "Removing associated volumes..."
+        docker volume rm @volumeNames | Out-Null
+    }
+}
+
 function Invoke-Setup {
     Show-Logo
     Assert-Docker
@@ -324,12 +366,78 @@ function Invoke-Down {
     Run-Compose -ComposeArgs @("down")
 }
 
+function Invoke-UpdateSelf {
+    Show-Logo
+
+    $defaultBranch = Get-RepoDefaultBranch
+    $candidateUrls = @(
+        "https://raw.githubusercontent.com/$RepoOwner/$RepoName/$defaultBranch/$ScriptRepoPath"
+    )
+    if ($defaultBranch -ne "main") {
+        $candidateUrls += "https://raw.githubusercontent.com/$RepoOwner/$RepoName/main/$ScriptRepoPath"
+    }
+    if ($defaultBranch -ne "master") {
+        $candidateUrls += "https://raw.githubusercontent.com/$RepoOwner/$RepoName/master/$ScriptRepoPath"
+    }
+    $candidateUrls = $candidateUrls | Select-Object -Unique
+
+    $tempPath = [System.IO.Path]::GetTempFileName()
+    $downloadedFrom = $null
+    try {
+        foreach ($url in $candidateUrls) {
+            try {
+                Invoke-WebRequest -Uri $url -Headers @{ "User-Agent" = "DispatchLauncher" } -OutFile $tempPath
+                if ((Get-Item $tempPath).Length -gt 0) {
+                    $downloadedFrom = $url
+                    break
+                }
+            } catch {
+                # Try next candidate URL.
+            }
+        }
+
+        if (-not $downloadedFrom) {
+            Write-RedLn "Failed to download latest script from GitHub."
+            exit 1
+        }
+
+        Move-Item -Path $tempPath -Destination $ScriptFilePath -Force
+        $tempPath = $null
+        Write-GreenLn "Updated launcher from: $downloadedFrom"
+        Write-DimLn "Saved to: $ScriptFilePath"
+    } finally {
+        if ($tempPath -and (Test-Path $tempPath)) {
+            Remove-Item -Path $tempPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Invoke-Pull {
     Show-Logo
     Assert-Docker
     Assert-EnvFile
     Run-Compose -ComposeArgs @("pull")
-    Run-Compose -ComposeArgs @("up", "-d")
+    Write-DimLn "Cleaning up old Dispatch containers..."
+    Run-Compose -ComposeArgs @("down", "--remove-orphans")
+    Run-Compose -ComposeArgs @("up", "-d", "--remove-orphans")
+}
+
+function Invoke-FreshStart {
+    Show-Logo
+    Assert-Docker
+    Assert-EnvFile
+
+    $confirmed = Prompt-YesNo -Message "This will permanently remove Dispatch containers and volumes. Continue?" -Default $false
+    if (-not $confirmed) {
+        Write-YellowLn "Fresh start cancelled."
+        return
+    }
+
+    Write-YellowLn "Removing containers and volumes for a clean start..."
+    Run-Compose -ComposeArgs @("down", "-v", "--remove-orphans")
+    Remove-AssociatedComposeVolumes
+    Run-Compose -ComposeArgs @("up", "-d", "--remove-orphans", "--force-recreate")
+    Write-GreenLn "Dispatch fresh start complete."
 }
 
 switch ($Command) {
@@ -340,8 +448,10 @@ switch ($Command) {
     "logs" { Invoke-Logs }
     "status" { Invoke-Status }
     "down" { Invoke-Down }
+    "updateself" { Invoke-UpdateSelf }
     "pull" { Invoke-Pull }
-    "version" { Write-Host "Dispatch v$Version" }
+    "freshstart" { Invoke-FreshStart }
+    "version" { Write-Host $VersionMoniker }
     "help" { Show-Help }
     default { Show-Help }
 }

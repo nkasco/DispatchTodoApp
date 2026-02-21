@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSession } from "next-auth/react";
 import {
   api,
   type Dispatch,
@@ -19,6 +20,7 @@ import {
   IconPlus,
   IconSearch,
 } from "@/components/icons";
+import { addDaysToIsoDate, formatIsoDateForDisplay, getIsoDateForTimeZone } from "@/lib/timezone";
 
 const STATUS_STYLES: Record<TaskStatus, { dot: string; label: string; ring: string }> = {
   open: { dot: "bg-blue-500", label: "Open", ring: "text-blue-500" },
@@ -28,13 +30,11 @@ const STATUS_STYLES: Record<TaskStatus, { dot: string; label: string; ring: stri
 
 const COMPLETE_DISMISS_MS = 420;
 
-function todayStr() {
-  return new Date().toISOString().split("T")[0];
-}
-
 export function DispatchPage() {
   const { toast } = useToast();
-  const [date, setDate] = useState(todayStr);
+  const { data: session } = useSession();
+  const today = getIsoDateForTimeZone(new Date(), session?.user?.timeZone ?? null);
+  const [date, setDate] = useState(today);
   const [dispatch, setDispatch] = useState<Dispatch | null>(null);
   const [linkedTasks, setLinkedTasks] = useState<Task[]>([]);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
@@ -51,6 +51,13 @@ export function DispatchPage() {
   const [unfinalizeWarning, setUnfinalizeWarning] = useState<{ nextDate: string } | null>(null);
   const [completingIds, setCompletingIds] = useState<string[]>([]);
   const completionTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const previousTodayRef = useRef(today);
+
+  useEffect(() => {
+    const previousToday = previousTodayRef.current;
+    previousTodayRef.current = today;
+    setDate((current) => (current === previousToday ? today : current));
+  }, [today]);
 
   const fetchDispatch = useCallback(async () => {
     setLoading(true);
@@ -243,9 +250,7 @@ export function DispatchPage() {
       setDispatch(result.dispatch);
       toast.success("Day completed!");
       if (result.nextDispatchId) {
-        const nextDate = new Date(date + "T00:00:00");
-        nextDate.setDate(nextDate.getDate() + 1);
-        setDate(nextDate.toISOString().split("T")[0]);
+        setDate(addDaysToIsoDate(date, 1));
       } else {
         fetchDispatch();
       }
@@ -292,12 +297,10 @@ export function DispatchPage() {
   }
 
   function navigateDay(offset: number) {
-    const d = new Date(date + "T00:00:00");
-    d.setDate(d.getDate() + offset);
-    setDate(d.toISOString().split("T")[0]);
+    setDate(addDaysToIsoDate(date, offset));
   }
 
-  const isToday = date === todayStr();
+  const isToday = date === today;
 
   const linkedIds = new Set(linkedTasks.map((t) => t.id));
   const availableTasks = allTasks.filter(
@@ -363,7 +366,7 @@ export function DispatchPage() {
                 {isToday ? "Today's Dispatch" : "Dispatch"}
               </h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                {new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+                {formatIsoDateForDisplay(date, {
                   weekday: "long",
                   year: "numeric",
                   month: "long",
@@ -380,7 +383,7 @@ export function DispatchPage() {
           </button>
           {!isToday && (
             <button
-              onClick={() => setDate(todayStr())}
+              onClick={() => setDate(today)}
               className="rounded-lg bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 dark:text-neutral-200 active:scale-95 transition-all"
             >
               Today
@@ -707,7 +710,7 @@ export function DispatchPage() {
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-6">
               This dispatch rolled over unfinished tasks to{" "}
               <span className="font-medium text-neutral-900 dark:text-white">
-                {new Date(unfinalizeWarning.nextDate + "T00:00:00").toLocaleDateString("en-US", {
+                {formatIsoDateForDisplay(unfinalizeWarning.nextDate, {
                   month: "short",
                   day: "numeric",
                   year: "numeric",

@@ -42,6 +42,7 @@ async function resolveApiKeySession(req: Request): Promise<Session | null> {
       frozenAt: users.frozenAt,
       showAdminQuickAccess: users.showAdminQuickAccess,
       assistantEnabled: users.assistantEnabled,
+      timeZone: users.timeZone,
     })
     .from(apiKeys)
     .innerJoin(users, eq(apiKeys.userId, users.id))
@@ -65,6 +66,7 @@ async function resolveApiKeySession(req: Request): Promise<Session | null> {
       isFrozen: Boolean(result.frozenAt),
       showAdminQuickAccess: result.showAdminQuickAccess ?? true,
       assistantEnabled: result.assistantEnabled ?? true,
+      timeZone: result.timeZone ?? null,
     },
     expires: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   };
@@ -88,6 +90,7 @@ export function withAuth<TCtx = unknown>(
       session.user.isFrozen = Boolean(session.user.isFrozen);
       session.user.showAdminQuickAccess = session.user.showAdminQuickAccess ?? true;
       session.user.assistantEnabled = session.user.assistantEnabled ?? true;
+      session.user.timeZone = session.user.timeZone ?? null;
       if (session.user.isFrozen) {
         return errorResponse("Account is frozen", 403);
       }
@@ -101,6 +104,7 @@ export function withAuth<TCtx = unknown>(
         apiKeySession.user.isFrozen = Boolean(apiKeySession.user.isFrozen);
         apiKeySession.user.showAdminQuickAccess = apiKeySession.user.showAdminQuickAccess ?? true;
         apiKeySession.user.assistantEnabled = apiKeySession.user.assistantEnabled ?? true;
+        apiKeySession.user.timeZone = apiKeySession.user.timeZone ?? null;
         if (apiKeySession.user.isFrozen) {
           return errorResponse("Account is frozen", 403);
         }

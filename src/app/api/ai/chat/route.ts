@@ -9,17 +9,17 @@ import {
   getActiveAiConfigForUser,
 } from "@/lib/ai";
 import { errorResponse, withAuth } from "@/lib/api";
+import { getIsoDateForTimeZone, resolveEffectiveTimeZone } from "@/lib/timezone";
 
 type ChatRequestBody = {
   conversationId?: string;
   messages?: UIMessage[];
 };
 
-function buildSystemPrompt(params: { mcpAvailable: boolean; nowIso: string }): string {
-  const todayUtc = params.nowIso.slice(0, 10);
+function buildSystemPrompt(params: { mcpAvailable: boolean; todayIso: string; timeZone: string }): string {
   return [
     "You are Dispatch Personal Assistant for a personal productivity app.",
-    `Today is ${todayUtc} (UTC). Use this when the user says today, tomorrow, or yesterday unless they provide explicit dates.`,
+    `Today is ${params.todayIso} (${params.timeZone}). Use this when the user says today, tomorrow, or yesterday unless they provide explicit dates.`,
     "Scope: help with Dispatch tasks, notes, projects, dispatches, and search.",
     "Be concise, accurate, and action-oriented.",
     "Never claim data was changed unless a tool call actually succeeded.",
@@ -73,7 +73,7 @@ export const POST = withAuth(async (req, session) => {
   }
 
   const [userPrefs] = await db
-    .select({ assistantEnabled: users.assistantEnabled })
+    .select({ assistantEnabled: users.assistantEnabled, timeZone: users.timeZone })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -152,7 +152,9 @@ export const POST = withAuth(async (req, session) => {
     mcpTools = undefined;
   }
 
-  const systemPrompt = buildSystemPrompt({ mcpAvailable, nowIso: now });
+  const resolvedTimeZone = resolveEffectiveTimeZone(userPrefs?.timeZone ?? null);
+  const todayIso = getIsoDateForTimeZone(new Date(), resolvedTimeZone);
+  const systemPrompt = buildSystemPrompt({ mcpAvailable, todayIso, timeZone: resolvedTimeZone });
 
   const modelMessages = await convertToModelMessages(
     messages.map((message) => {

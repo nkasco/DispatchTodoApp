@@ -21,6 +21,7 @@ const TEST_USER = {
   role: "admin" as const,
   showAdminQuickAccess: true,
   assistantEnabled: true,
+  timeZone: null,
 };
 
 function jsonReq(url: string, body: unknown) {
@@ -58,7 +59,7 @@ describe("Me API", () => {
       {},
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ showAdminQuickAccess: false, assistantEnabled: true });
+    expect(await res.json()).toEqual({ showAdminQuickAccess: false, assistantEnabled: true, timeZone: null });
 
     const [updated] = testDb.db
       .select({ showAdminQuickAccess: users.showAdminQuickAccess })
@@ -74,7 +75,7 @@ describe("Me API", () => {
       {},
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ showAdminQuickAccess: true, assistantEnabled: false });
+    expect(await res.json()).toEqual({ showAdminQuickAccess: true, assistantEnabled: false, timeZone: null });
 
     const [updated] = testDb.db
       .select({ assistantEnabled: users.assistantEnabled })
@@ -87,6 +88,34 @@ describe("Me API", () => {
   it("PUT rejects invalid payload values", async () => {
     const res = await PUT(
       jsonReq("http://localhost/api/me", { showAdminQuickAccess: "nope" }),
+      {},
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("PUT updates timezone", async () => {
+    const res = await PUT(
+      jsonReq("http://localhost/api/me", { timeZone: "America/Los_Angeles" }),
+      {},
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      showAdminQuickAccess: true,
+      assistantEnabled: true,
+      timeZone: "America/Los_Angeles",
+    });
+
+    const [updated] = testDb.db
+      .select({ timeZone: users.timeZone })
+      .from(users)
+      .where(eq(users.id, TEST_USER.id))
+      .all();
+    expect(updated.timeZone).toBe("America/Los_Angeles");
+  });
+
+  it("PUT rejects invalid timezone", async () => {
+    const res = await PUT(
+      jsonReq("http://localhost/api/me", { timeZone: "Mars/OlympusMons" }),
       {},
     );
     expect(res.status).toBe(400);

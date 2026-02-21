@@ -20,6 +20,8 @@ ENV PORT=3000
 ENV DATABASE_URL=/app/data/dispatch.db
 ENV AUTH_TRUST_HOST=true
 
+RUN apt-get update && apt-get install -y --no-install-recommends procps && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 --gid nodejs dispatch
 
@@ -33,6 +35,7 @@ COPY --from=builder /app/src/mcp-server ./src/mcp-server
 COPY --from=builder /app/src/db/index.ts ./src/db/index.ts
 COPY --from=builder /app/src/db/schema.ts ./src/db/schema.ts
 COPY --from=builder /app/src/lib/db-encryption.ts ./src/lib/db-encryption.ts
+COPY --from=builder /app/src/lib/timezone.ts ./src/lib/timezone.ts
 COPY --from=builder /app/docker/entrypoint.sh ./docker/entrypoint.sh
 COPY --from=builder /app/docker/repair-migrations.js ./docker/repair-migrations.js
 
