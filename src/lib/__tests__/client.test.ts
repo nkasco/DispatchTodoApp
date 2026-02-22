@@ -143,11 +143,13 @@ describe("api.tasks", () => {
       await api.tasks.create({
         title: "Recurring task",
         recurrenceType: "custom",
+        recurrenceBehavior: "duplicate_on_schedule",
         recurrenceRule: { interval: 3, unit: "week" },
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.recurrenceType).toBe("custom");
+      expect(body.recurrenceBehavior).toBe("duplicate_on_schedule");
       expect(body.recurrenceRule).toEqual({ interval: 3, unit: "week" });
     });
   });
@@ -178,11 +180,13 @@ describe("api.tasks", () => {
 
       await api.tasks.update("abc", {
         recurrenceType: "monthly",
+        recurrenceBehavior: "after_completion",
         recurrenceRule: null,
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.recurrenceType).toBe("monthly");
+      expect(body.recurrenceBehavior).toBe("after_completion");
       expect(body.recurrenceRule).toBeNull();
     });
   });
@@ -645,6 +649,7 @@ describe("api.me", () => {
           title: "Plan {{date:YYYY-MM-DD}}",
           description: "",
           recurrenceType: "none",
+          recurrenceBehavior: "after_completion",
           recurrenceRule: null,
         },
       ],

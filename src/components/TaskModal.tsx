@@ -7,6 +7,7 @@ import {
   type Task,
   type TaskStatus,
   type TaskPriority,
+  type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
   type TaskCustomRecurrenceUnit,
   type TaskTemplatePreset,
@@ -40,6 +41,9 @@ export function TaskModal({
   const parsedRecurrenceRule = parseTaskCustomRecurrenceRule(task?.recurrenceRule);
   const [recurrenceType, setRecurrenceType] = useState<TaskRecurrenceType>(
     task?.recurrenceType ?? "none",
+  );
+  const [recurrenceBehavior, setRecurrenceBehavior] = useState<TaskRecurrenceBehavior>(
+    task?.recurrenceBehavior ?? "after_completion",
   );
   const [customInterval, setCustomInterval] = useState<string>(
     String(parsedRecurrenceRule?.interval ?? 2),
@@ -127,6 +131,10 @@ export function TaskModal({
         return;
       }
     }
+    if (recurrenceType !== "none" && recurrenceBehavior === "duplicate_on_schedule" && !dueDate) {
+      setError("Scheduled duplicates require a due date anchor.");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -141,6 +149,8 @@ export function TaskModal({
           dueDate: dueDate || null,
           projectId: projectId || null,
           recurrenceType,
+          recurrenceBehavior:
+            recurrenceType === "none" ? "after_completion" : recurrenceBehavior,
           recurrenceRule:
             recurrenceType === "custom"
               ? {
@@ -158,6 +168,8 @@ export function TaskModal({
           dueDate: dueDate || undefined,
           projectId: projectId || null,
           recurrenceType,
+          recurrenceBehavior:
+            recurrenceType === "none" ? "after_completion" : recurrenceBehavior,
           recurrenceRule:
             recurrenceType === "custom"
               ? {
@@ -212,6 +224,19 @@ export function TaskModal({
     { value: "month", label: "Month(s)" },
   ];
 
+  const recurrenceBehaviorOptions = [
+    {
+      value: "after_completion",
+      label: "After Completion",
+      dot: "bg-blue-500",
+    },
+    {
+      value: "duplicate_on_schedule",
+      label: "Duplicate On Schedule",
+      dot: "bg-emerald-500",
+    },
+  ];
+
   const templateTokens = [
     { label: "Date", token: "{{date:YYYY-MM-DD}}" },
     { label: "Weekend Block", token: "{{if:day=sat}}...{{/if}}" },
@@ -255,6 +280,7 @@ export function TaskModal({
     setTitle(template.title);
     setDescription(template.description);
     setRecurrenceType(template.recurrenceType);
+    setRecurrenceBehavior(template.recurrenceBehavior ?? "after_completion");
 
     if (template.recurrenceType === "custom") {
       const parsedRule = parseTaskCustomRecurrenceRule(template.recurrenceRule);
@@ -495,6 +521,21 @@ export function TaskModal({
             options={recurrenceTypeOptions}
             onChange={(v) => setRecurrenceType(v as TaskRecurrenceType)}
           />
+          {recurrenceType !== "none" && (
+            <PillGroup
+              label="When It Repeats"
+              value={recurrenceBehavior}
+              options={recurrenceBehaviorOptions}
+              onChange={(v) => setRecurrenceBehavior(v as TaskRecurrenceBehavior)}
+            />
+          )}
+          {recurrenceType !== "none" && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {recurrenceBehavior === "after_completion"
+                ? "A new occurrence is expected after you finish the current one."
+                : "A new copy is expected each interval based on the due date schedule."}
+            </p>
+          )}
           {recurrenceType === "custom" && (
             <div className="grid grid-cols-[0.6fr_1fr] gap-3">
               <div>

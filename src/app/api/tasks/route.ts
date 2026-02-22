@@ -1,9 +1,11 @@
 import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import {
+  isTaskRecurrenceBehavior,
   isTaskRecurrenceType,
   parseTaskCustomRecurrenceRule,
   serializeTaskCustomRecurrenceRule,
+  type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
 } from "@/lib/task-recurrence";
 import { db } from "@/db";
@@ -90,6 +92,7 @@ export const POST = withAuth(async (req, session) => {
     dueDate,
     projectId,
     recurrenceType,
+    recurrenceBehavior,
     recurrenceRule,
   } = body as Record<string, unknown>;
 
@@ -133,7 +136,17 @@ export const POST = withAuth(async (req, session) => {
     return errorResponse("recurrenceType must be one of: none, daily, weekly, monthly, custom", 400);
   }
 
+  if (recurrenceBehavior !== undefined && !isTaskRecurrenceBehavior(recurrenceBehavior)) {
+    return errorResponse(
+      "recurrenceBehavior must be one of: after_completion, duplicate_on_schedule",
+      400,
+    );
+  }
+
   const resolvedRecurrenceType = (recurrenceType as TaskRecurrenceType | undefined) ?? "none";
+  const resolvedRecurrenceBehavior = resolvedRecurrenceType === "none"
+    ? "after_completion"
+    : (recurrenceBehavior as TaskRecurrenceBehavior | undefined) ?? "after_completion";
   let resolvedRecurrenceRule: string | null = null;
 
   if (resolvedRecurrenceType === "custom") {
@@ -147,6 +160,17 @@ export const POST = withAuth(async (req, session) => {
     resolvedRecurrenceRule = serializeTaskCustomRecurrenceRule(parsedRule);
   } else if (recurrenceRule !== undefined && recurrenceRule !== null) {
     return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
+  }
+
+  if (
+    resolvedRecurrenceType !== "none"
+    && resolvedRecurrenceBehavior === "duplicate_on_schedule"
+    && (!dueDate || typeof dueDate !== "string" || dueDate.trim().length === 0)
+  ) {
+    return errorResponse(
+      "dueDate is required when recurrenceBehavior is duplicate_on_schedule",
+      400,
+    );
   }
 
   let resolvedProjectId: string | null | undefined = undefined;
@@ -176,6 +200,7 @@ export const POST = withAuth(async (req, session) => {
       priority: (priority as typeof VALID_PRIORITIES[number]) ?? "medium",
       dueDate: dueDate as string | undefined,
       recurrenceType: resolvedRecurrenceType,
+      recurrenceBehavior: resolvedRecurrenceBehavior,
       recurrenceRule: resolvedRecurrenceRule,
       createdAt: now,
       updatedAt: now,

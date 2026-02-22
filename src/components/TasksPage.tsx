@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   api,
@@ -15,6 +16,7 @@ import { useToast } from "@/components/ToastProvider";
 import { IconCheckCircle, IconPlus, IconPencil, IconTrash } from "@/components/icons";
 import { PROJECT_COLORS } from "@/lib/projects";
 import { renderTemplate } from "@/lib/templates";
+import { getTaskRecurrencePreview, RECURRENCE_BEHAVIOR_LABELS } from "@/lib/task-recurrence-preview";
 
 type SortField = "createdAt" | "dueDate" | "priority";
 
@@ -45,13 +47,14 @@ export function TasksPage() {
   );
   const [sortBy, setSortBy] = useState<SortField>("createdAt");
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showRecurringOnly, setShowRecurringOnly] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [flashingId, setFlashingId] = useState<string | null>(null);
   const [completingIds, setCompletingIds] = useState<string[]>([]);
   const completionTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const hasActiveFilters = Boolean(statusFilter || priorityFilter || projectFilter);
+  const hasActiveFilters = Boolean(statusFilter || priorityFilter || projectFilter || showRecurringOnly);
 
   function queueCompletionCleanup(taskId: string) {
     const existing = completionTimeoutsRef.current[taskId];
@@ -175,9 +178,10 @@ export function TasksPage() {
     }
   }, [statusFilter]);
 
-  const filteredTasks = showCompleted
+  const filteredTasks = (showCompleted
     ? tasks
-    : tasks.filter((task) => task.status !== "done" || completingIds.includes(task.id));
+    : tasks.filter((task) => task.status !== "done" || completingIds.includes(task.id)))
+    .filter((task) => (showRecurringOnly ? task.recurrenceType !== "none" : true));
 
   const sorted = [...filteredTasks].sort((a, b) => {
     if (sortBy === "dueDate") {
@@ -298,6 +302,7 @@ export function TasksPage() {
   const openCount = tasks.filter((t) => t.status === "open").length;
   const inProgressCount = tasks.filter((t) => t.status === "in_progress").length;
   const doneCount = tasks.filter((t) => t.status === "done").length;
+  const recurringCount = tasks.filter((t) => t.recurrenceType !== "none").length;
   const hasAnyTasks = tasks.length > 0;
   const emptyMessage = statusFilter || priorityFilter || projectFilter
     ? "Try adjusting your filters."
@@ -373,16 +378,29 @@ export function TasksPage() {
             )}
           </div>
         </div>
-        <button
-          onClick={() => {
-            setEditingTask(null);
-            setModalOpen(true);
-          }}
-          className="inline-flex self-start items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-500 active:scale-95 sm:self-auto"
-        >
-          <IconPlus className="w-4 h-4" />
-          New Task
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            href="/tasks/recurring"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 shadow-sm transition-all hover:border-neutral-300 dark:hover:border-neutral-600 active:scale-95"
+          >
+            Recurring Manager
+            {recurringCount > 0 ? (
+              <span className="rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300">
+                {recurringCount}
+              </span>
+            ) : null}
+          </Link>
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-500 active:scale-95"
+          >
+            <IconPlus className="w-4 h-4" />
+            New Task
+          </button>
+        </div>
       </div>
 
       {/* Filters & sort */}
@@ -448,6 +466,7 @@ export function TasksPage() {
                     setStatusFilter("");
                     setPriorityFilter("");
                     setProjectFilter("");
+                    setShowRecurringOnly(false);
                   }}
                   type="button"
                   aria-label="Clear filters"
@@ -497,6 +516,26 @@ export function TasksPage() {
                 <span
                   className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${
                     showCompleted ? "translate-x-3.5" : "translate-x-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showRecurringOnly}
+              onClick={() => setShowRecurringOnly((prev) => !prev)}
+              className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition-all active:scale-95"
+            >
+              <span>Recurring Only</span>
+              <span
+                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                  showRecurringOnly ? "bg-blue-600" : "bg-neutral-300 dark:bg-neutral-700"
+                }`}
+              >
+                <span
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${
+                    showRecurringOnly ? "translate-x-3.5" : "translate-x-0.5"
                   }`}
                 />
               </span>
@@ -679,6 +718,9 @@ function TaskRow({
   const renderedDescription = task.description
     ? renderTemplate(task.description, { referenceDate })
     : "";
+  const recurrencePreview = task.recurrenceType !== "none"
+    ? getTaskRecurrencePreview(task)
+    : null;
 
   function handleStatusClick() {
     if (task.status !== "done") {
@@ -768,6 +810,15 @@ function TaskRow({
         >
           {task.priority}
         </span>
+        {recurrencePreview && (
+          <span
+            title={`${recurrencePreview.cadence} • ${RECURRENCE_BEHAVIOR_LABELS[task.recurrenceBehavior]}`}
+            className="inline-flex items-center gap-1 rounded-full border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+            {recurrencePreview.cadence}
+          </span>
+        )}
 
         {task.dueDate && (
           <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">

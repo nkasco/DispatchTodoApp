@@ -31,6 +31,7 @@ export const GET = withAuth(async (req, session, ctx) => {
       priority: tasks.priority,
       dueDate: tasks.dueDate,
       recurrenceType: tasks.recurrenceType,
+      recurrenceBehavior: tasks.recurrenceBehavior,
       recurrenceRule: tasks.recurrenceRule,
       createdAt: tasks.createdAt,
       updatedAt: tasks.updatedAt,

@@ -1,8 +1,10 @@
 import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import {
+  isTaskRecurrenceBehavior,
   isTaskRecurrenceType,
   parseTaskCustomRecurrenceRule,
   serializeTaskCustomRecurrenceRule,
+  type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
 } from "@/lib/task-recurrence";
 import { db } from "@/db";
@@ -49,6 +51,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
     dueDate,
     projectId,
     recurrenceType,
+    recurrenceBehavior,
     recurrenceRule,
   } = body as Record<string, unknown>;
 
@@ -92,6 +95,13 @@ export const PUT = withAuth(async (req, session, ctx) => {
     return errorResponse("recurrenceType must be one of: none, daily, weekly, monthly, custom", 400);
   }
 
+  if (recurrenceBehavior !== undefined && !isTaskRecurrenceBehavior(recurrenceBehavior)) {
+    return errorResponse(
+      "recurrenceBehavior must be one of: after_completion, duplicate_on_schedule",
+      400,
+    );
+  }
+
   let resolvedProjectId: string | null | undefined = undefined;
   if (projectId === null) {
     resolvedProjectId = null;
@@ -110,7 +120,9 @@ export const PUT = withAuth(async (req, session, ctx) => {
   const [existing] = await db
     .select({
       id: tasks.id,
+      dueDate: tasks.dueDate,
       recurrenceType: tasks.recurrenceType,
+      recurrenceBehavior: tasks.recurrenceBehavior,
       recurrenceRule: tasks.recurrenceRule,
     })
     .from(tasks)
@@ -121,12 +133,17 @@ export const PUT = withAuth(async (req, session, ctx) => {
   }
 
   const hasRecurrenceType = Object.prototype.hasOwnProperty.call(body, "recurrenceType");
+  const hasRecurrenceBehavior = Object.prototype.hasOwnProperty.call(body, "recurrenceBehavior");
   const hasRecurrenceRule = Object.prototype.hasOwnProperty.call(body, "recurrenceRule");
 
   const nextRecurrenceType = hasRecurrenceType
     ? recurrenceType as TaskRecurrenceType
     : existing.recurrenceType;
+  let nextRecurrenceBehavior = hasRecurrenceBehavior
+    ? recurrenceBehavior as TaskRecurrenceBehavior
+    : existing.recurrenceBehavior;
   let nextRecurrenceRule = existing.recurrenceRule;
+  const nextDueDate = dueDate !== undefined ? dueDate : existing.dueDate;
 
   if (hasRecurrenceRule) {
     if (recurrenceRule === null) {
@@ -156,6 +173,18 @@ export const PUT = withAuth(async (req, session, ctx) => {
     }
   }
 
+  if (nextRecurrenceType === "none") {
+    nextRecurrenceBehavior = "after_completion";
+  } else if (
+    nextRecurrenceBehavior === "duplicate_on_schedule"
+    && (!nextDueDate || typeof nextDueDate !== "string" || nextDueDate.trim().length === 0)
+  ) {
+    return errorResponse(
+      "dueDate is required when recurrenceBehavior is duplicate_on_schedule",
+      400,
+    );
+  }
+
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   if (title !== undefined) updates.title = (title as string).trim();
   if (description !== undefined) updates.description = description;
@@ -164,6 +193,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
   if (dueDate !== undefined) updates.dueDate = dueDate;
   if (projectId !== undefined) updates.projectId = resolvedProjectId;
   if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
+  if (hasRecurrenceBehavior || hasRecurrenceType) updates.recurrenceBehavior = nextRecurrenceBehavior;
   if (hasRecurrenceRule || hasRecurrenceType) updates.recurrenceRule = nextRecurrenceRule;
 
   const [updated] = await db

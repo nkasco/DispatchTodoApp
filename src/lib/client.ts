@@ -3,6 +3,7 @@
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskRecurrenceType = "none" | "daily" | "weekly" | "monthly" | "custom";
+export type TaskRecurrenceBehavior = "after_completion" | "duplicate_on_schedule";
 export type TaskCustomRecurrenceUnit = "day" | "week" | "month";
 export type ProjectStatus = "active" | "paused" | "completed";
 export type UserRole = "member" | "admin";
@@ -19,6 +20,7 @@ export interface TaskTemplatePreset {
   title: string;
   description: string;
   recurrenceType: TaskRecurrenceType;
+  recurrenceBehavior: TaskRecurrenceBehavior;
   recurrenceRule: string | null;
 }
 
@@ -66,6 +68,7 @@ export interface Task {
   priority: TaskPriority;
   dueDate: string | null;
   recurrenceType: TaskRecurrenceType;
+  recurrenceBehavior: TaskRecurrenceBehavior;
   recurrenceRule: string | null;
   createdAt: string;
   updatedAt: string;
@@ -369,6 +372,7 @@ export const api = {
       dueDate?: string;
       projectId?: string | null;
       recurrenceType?: TaskRecurrenceType;
+      recurrenceBehavior?: TaskRecurrenceBehavior;
       recurrenceRule?: TaskCustomRecurrenceRule | null;
     }) =>
       request<Task>("/tasks", { method: "POST", body: JSON.stringify(data) }).then((task) => {
@@ -386,6 +390,7 @@ export const api = {
         dueDate?: string | null;
         projectId?: string | null;
         recurrenceType?: TaskRecurrenceType;
+        recurrenceBehavior?: TaskRecurrenceBehavior;
         recurrenceRule?: TaskCustomRecurrenceRule | null;
       },
     ) =>

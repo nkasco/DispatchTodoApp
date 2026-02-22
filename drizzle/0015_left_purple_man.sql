@@ -1,0 +1,1 @@
+ALTER TABLE `task` ADD `recurrenceBehavior` text DEFAULT 'after_completion' NOT NULL;

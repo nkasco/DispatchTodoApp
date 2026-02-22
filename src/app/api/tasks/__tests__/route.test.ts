@@ -77,6 +77,7 @@ describe("Tasks API", () => {
       expect(data.title).toBe("My task");
       expect(data.status).toBe("open");
       expect(data.priority).toBe("medium");
+      expect(data.recurrenceBehavior).toBe("after_completion");
       expect(data.userId).toBe(TEST_USER.id);
       expect(data.id).toBeDefined();
     });
@@ -112,6 +113,7 @@ describe("Tasks API", () => {
       expect(res.status).toBe(201);
       const data = await res.json();
       expect(data.recurrenceType).toBe("daily");
+      expect(data.recurrenceBehavior).toBe("after_completion");
       expect(data.recurrenceRule).toBeNull();
     });
 
@@ -127,6 +129,7 @@ describe("Tasks API", () => {
       expect(res.status).toBe(201);
       const data = await res.json();
       expect(data.recurrenceType).toBe("custom");
+      expect(data.recurrenceBehavior).toBe("after_completion");
       expect(JSON.parse(data.recurrenceRule)).toEqual({ interval: 2, unit: "week" });
     });
 
@@ -192,6 +195,30 @@ describe("Tasks API", () => {
           recurrenceType: "hourly",
         }),
         {}
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects invalid recurrenceBehavior", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "test",
+          recurrenceType: "daily",
+          recurrenceBehavior: "after_close",
+        }),
+        {},
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("requires dueDate for duplicate_on_schedule recurrence behavior", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Schedule duplicate",
+          recurrenceType: "weekly",
+          recurrenceBehavior: "duplicate_on_schedule",
+        }),
+        {},
       );
       expect(res.status).toBe(400);
     });
@@ -570,7 +597,51 @@ describe("Tasks API", () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.recurrenceType).toBe("custom");
+      expect(data.recurrenceBehavior).toBe("after_completion");
       expect(JSON.parse(data.recurrenceRule)).toEqual({ interval: 3, unit: "day" });
+    });
+
+    it("updates recurrence behavior when valid", async () => {
+      const createRes = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Scheduled duplicate",
+          recurrenceType: "weekly",
+          dueDate: "2026-03-01",
+        }),
+        {},
+      );
+      const created = await createRes.json();
+
+      const res = await PUT(
+        jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
+          recurrenceBehavior: "duplicate_on_schedule",
+        }),
+        ctx(created.id),
+      );
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.recurrenceBehavior).toBe("duplicate_on_schedule");
+    });
+
+    it("rejects duplicate_on_schedule when dueDate is not set on update", async () => {
+      const createRes = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "No due date recurring",
+          recurrenceType: "weekly",
+        }),
+        {},
+      );
+      const created = await createRes.json();
+
+      const res = await PUT(
+        jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
+          recurrenceBehavior: "duplicate_on_schedule",
+        }),
+        ctx(created.id),
+      );
+
+      expect(res.status).toBe(400);
     });
 
     it("clears recurrenceRule when recurrenceType changes away from custom", async () => {

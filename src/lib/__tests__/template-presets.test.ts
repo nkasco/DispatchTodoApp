@@ -20,6 +20,7 @@ describe("template presets", () => {
           title: "Review {{date:YYYY-MM-DD}}",
           description: "Close out and plan ahead",
           recurrenceType: "none",
+          recurrenceBehavior: "after_completion",
           recurrenceRule: null,
         },
       ],
@@ -42,6 +43,7 @@ describe("template presets", () => {
           title: "Planning",
           description: "",
           recurrenceType: "custom",
+          recurrenceBehavior: "duplicate_on_schedule",
           recurrenceRule: { interval: 2, unit: "week" },
         },
       ],
@@ -59,6 +61,25 @@ describe("template presets", () => {
       notes: [],
       dispatches: [],
     });
+  });
+
+  it("defaults recurrenceBehavior for legacy task templates", () => {
+    const payload = {
+      tasks: [
+        {
+          id: "task-template-legacy",
+          name: "Legacy",
+          title: "Legacy title",
+          description: "",
+          recurrenceType: "weekly",
+          recurrenceRule: null,
+        },
+      ],
+      notes: [],
+      dispatches: [],
+    };
+
+    expect(validateTemplatePresetsInput(payload).tasks[0].recurrenceBehavior).toBe("after_completion");
   });
 
   it("rejects malformed payloads", () => {

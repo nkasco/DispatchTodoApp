@@ -514,6 +514,7 @@ export function ProfilePreferences({
             title: trimmedTitle,
             description: taskTemplateDescription,
             recurrenceType: "none",
+            recurrenceBehavior: "after_completion",
             recurrenceRule: null,
           },
         ],

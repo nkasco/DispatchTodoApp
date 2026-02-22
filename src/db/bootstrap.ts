@@ -28,6 +28,12 @@ const REQUIRED_COLUMNS: ColumnBootstrap[] = [
     addSql: 'ALTER TABLE "task" ADD COLUMN "recurrenceRule" text',
   },
   {
+    table: "task",
+    column: "recurrenceBehavior",
+    addSql:
+      'ALTER TABLE "task" ADD COLUMN "recurrenceBehavior" text NOT NULL DEFAULT \'after_completion\'',
+  },
+  {
     table: "security_setting",
     column: "shareAiApiKeyWithUsers",
     addSql:

@@ -52,6 +52,7 @@ describe("ensureSchemaColumns", () => {
     const columns = columnNames(sqlite, "task");
     expect(columns).toContain("recurrenceType");
     expect(columns).toContain("recurrenceRule");
+    expect(columns).toContain("recurrenceBehavior");
   });
 
   it("adds missing security setting columns used by admin routes", () => {

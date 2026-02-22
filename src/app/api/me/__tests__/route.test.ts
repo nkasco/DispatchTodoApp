@@ -144,6 +144,7 @@ describe("Me API", () => {
           title: "Plan {{date:YYYY-MM-DD}}",
           description: "Focus on top priorities",
           recurrenceType: "none",
+          recurrenceBehavior: "after_completion",
           recurrenceRule: null,
         },
       ],

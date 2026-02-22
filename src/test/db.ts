@@ -76,6 +76,7 @@ export function createTestDb() {
       "priority" text NOT NULL DEFAULT 'medium',
       "dueDate" text,
       "recurrenceType" text NOT NULL DEFAULT 'none',
+      "recurrenceBehavior" text NOT NULL DEFAULT 'after_completion',
       "recurrenceRule" text,
       "deletedAt" text,
       "createdAt" text NOT NULL DEFAULT (current_timestamp),

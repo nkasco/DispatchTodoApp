@@ -107,6 +107,11 @@ export const tasks = sqliteTable(
     })
       .notNull()
       .default("none"),
+    recurrenceBehavior: text("recurrenceBehavior", {
+      enum: ["after_completion", "duplicate_on_schedule"],
+    })
+      .notNull()
+      .default("after_completion"),
     recurrenceRule: text("recurrenceRule"),
     deletedAt: text("deletedAt"),
     createdAt: text("createdAt")

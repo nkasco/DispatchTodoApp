@@ -1,7 +1,9 @@
 import {
+  isTaskRecurrenceBehavior,
   isTaskRecurrenceType,
   parseTaskCustomRecurrenceRule,
   serializeTaskCustomRecurrenceRule,
+  type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
 } from "@/lib/task-recurrence";
 
@@ -11,6 +13,7 @@ export interface TaskTemplatePreset {
   title: string;
   description: string;
   recurrenceType: TaskRecurrenceType;
+  recurrenceBehavior: TaskRecurrenceBehavior;
   recurrenceRule: string | null;
 }
 
@@ -52,6 +55,12 @@ function parseTaskPreset(value: unknown): TaskTemplatePreset {
 
   const recurrenceTypeRaw = entry.recurrenceType;
   const recurrenceType = isTaskRecurrenceType(recurrenceTypeRaw) ? recurrenceTypeRaw : "none";
+  const recurrenceBehaviorRaw = entry.recurrenceBehavior;
+  const recurrenceBehavior = recurrenceType === "none"
+    ? "after_completion"
+    : isTaskRecurrenceBehavior(recurrenceBehaviorRaw)
+      ? recurrenceBehaviorRaw
+      : "after_completion";
 
   let recurrenceRule: string | null = null;
   if (recurrenceType === "custom") {
@@ -68,6 +77,7 @@ function parseTaskPreset(value: unknown): TaskTemplatePreset {
     title,
     description,
     recurrenceType,
+    recurrenceBehavior,
     recurrenceRule,
   };
 }

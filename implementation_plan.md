@@ -383,3 +383,52 @@ Phase 17 - Multi-Device Optimizations
 - [x] **17.9** Harden client-side UUID generation for broader browser compatibility: replace direct `crypto.randomUUID()` calls in UI paths (notably toast/error surfaces used by Assistant chat) with a shared helper that uses `globalThis.crypto?.randomUUID?.()` when available and falls back to a safe local ID generator, plus regression coverage.
 - [x] **17.10** Add an admin-configurable setting to disable new user creation/registration globally; when enabled, block all user-creation paths (credentials registration UI and related API endpoints) and return a clear message such as "User creation is disabled by the administrator."
 - [x] **17.11** Fix credentials auth email normalization mismatch so registration and login behave consistently: normalize email input (`trim().toLowerCase()`) in credentials sign-in/authorize flow (and shared auth paths as needed), then add regression coverage for mixed-case and whitespace email sign-in.
+
+## Phase 18: Profile Export Interoperability
+
+Add profile-level export options that let a user migrate Dispatch data into external todo app formats, using format-specific optimization rules instead of a one-size-fits-all export.
+
+### 18A - Profile UX and Export Surface
+
+- [ ] **18.1** Add a new **Exports** section to `/profile` with a format picker, export scope controls (tasks only, tasks + projects, include completed, date range), and an "Export" action.
+- [ ] **18.2** Add format descriptions in the UI so each option clearly states target apps and known compatibility constraints before export.
+- [ ] **18.3** Add an export preview summary (record counts, omitted fields, fallback mappings) before file generation.
+
+### 18B - Export Engine and API
+
+- [ ] **18.4** Create `POST /api/exports/tasks` behind `withAuth` to generate downloadable exports for the authenticated user only. Add examples to the integrations page for it.
+- [ ] **18.5** Implement a pluggable export adapter layer (`src/lib/exports/`) where each format defines its own schema mapping, escaping rules, date handling, and capability limits.
+- [ ] **18.6** Implement deterministic, timezone-safe serialization for due dates/reminders using the user's profile timezone, with graceful fallback when a target format lacks equivalent fields.
+- [ ] **18.7** Add export metadata headers/manifest payload (format version, generated timestamp, item counts) so imports are traceable and debuggable.
+
+### 18C - Initial Format Targets (Optimized Per Format)
+
+- [ ] **18.8** Add **Todoist CSV** export adapter with column mapping tailored to Todoist import expectations (content, description, priority, due date, labels/project mapping).
+- [ ] **18.9** Add **Todo.txt** export adapter optimized for plain-text task tools (priority token, due dates, project/context tags, completion markers).
+- [ ] **18.10** Add **iCalendar (.ics)** export adapter (VTODO-first, VEVENT fallback where needed) for ecosystems that import calendar/task feeds.
+- [ ] **18.11** Add per-format validation and warning reports so unsupported Dispatch fields are surfaced explicitly instead of silently dropped.
+
+### 18D - Quality, Safety, and Documentation
+
+- [ ] **18.12** Add integration tests for export API auth/user scoping and snapshot tests for each adapter output format.
+- [ ] **18.13** Add UI tests for Profile export controls, preview states, successful download flow, and error handling.
+- [ ] **18.14** Add rate-limit and payload-size guardrails for large exports, with clear user-facing errors.
+- [ ] **18.15** Update `spec.md` and integration docs to include export architecture, supported formats, and known field-mapping limitations.
+
+### 18E - Integrations Connectors and Continuous Sync
+
+- [ ] **18.16** Extend the Integrations page with an **External Task Connectors** section showing connector status, last sync time, error state, and manual re-sync controls.
+- [ ] **18.17** Build a connector framework (`src/lib/integrations/connectors/`) with provider adapters, encrypted token storage, per-user connection records, and capability flags (push-only, pull-only, bi-directional).
+- [ ] **18.18** Add a **Todoist connector** using Todoist API v1 OAuth/token flow with project/task mapping tables so Dispatch creates/updates propagate to Todoist via API.
+- [ ] **18.19** Add Todoist webhook ingestion endpoint(s) to support near-real-time external change detection and incremental reconciliation without full re-sync on every cycle.
+- [ ] **18.20** Implement a durable outbound sync pipeline (change log/outbox + retry + idempotency keys + backoff) so any Dispatch task mutation is reliably delivered to active connectors.
+- [ ] **18.21** Add conflict resolution policy (last-write-wins by default, with per-item conflict markers) and a sync audit log visible from Integrations for debugging.
+- [ ] **18.22** Add an **iCalendar ecosystem connector path** via CalDAV-compatible servers (where configured) for VTODO/VEVENT sync, while retaining `.ics` file export for import-only targets.
+- [ ] **18.23** Mark **todo.txt** as export-only in v1 sync scope (no standard remote API), and optionally define a future file-sync adapter track (Dropbox/Drive/Git) as a separate phase.
+
+### 18F - Things 3 Integration Option
+
+- [ ] **18.24** Add a **Things 3** connector option in Integrations with explicit capability labels: no public Things Cloud API, local automation only, and Apple-platform requirements.
+- [ ] **18.25** Implement a **Things URL Scheme** adapter for outbound create/update flows (`things:///add`, `things:///update`, JSON commands) using user-provided auth token handling and field mapping from Dispatch tasks/projects.
+- [ ] **18.26** Add an optional macOS-only local bridge mode (AppleScript/Shortcuts runner) for richer Things automation where URL-scheme coverage is insufficient.
+- [ ] **18.27** Scope v1 Things sync to **Dispatch -> Things push** plus manual/periodic reconciliation, and defer true bidirectional sync unless/ until a supported API surface becomes available.
