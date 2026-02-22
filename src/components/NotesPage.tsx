@@ -6,6 +6,7 @@ import { api, type Note } from "@/lib/client";
 import { Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/ToastProvider";
 import { IconDocument, IconGrid, IconList, IconPlus, IconTrash } from "@/components/icons";
+import { renderTemplate } from "@/lib/templates";
 
 export function NotesPage() {
   const router = useRouter();
@@ -282,6 +283,11 @@ function NoteRow({
   onRequestDelete: () => void;
   onConfirmDelete: () => void;
 }) {
+  const renderedTitle = renderTemplate(note.title, { referenceDate: note.createdAt });
+  const renderedContent = note.content
+    ? renderTemplate(note.content, { referenceDate: note.createdAt })
+    : "";
+
   return (
     <li
       className={`group flex flex-wrap items-center gap-2.5 px-4 py-3 transition-all duration-200 sm:gap-3 ${
@@ -291,10 +297,10 @@ function NoteRow({
       onClick={onClick}
     >
       <div className="min-w-0 basis-full sm:flex-1">
-        <p className="text-sm font-medium truncate dark:text-white">{note.title}</p>
-        {note.content && (
+        <p className="text-sm font-medium truncate dark:text-white">{renderedTitle}</p>
+        {renderedContent && (
           <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
-            {note.content}
+            {renderedContent}
           </p>
         )}
       </div>
@@ -346,6 +352,11 @@ function NoteCard({
   onRequestDelete: () => void;
   onConfirmDelete: () => void;
 }) {
+  const renderedTitle = renderTemplate(note.title, { referenceDate: note.createdAt });
+  const renderedContent = note.content
+    ? renderTemplate(note.content, { referenceDate: note.createdAt })
+    : "";
+
   return (
     <div
       className={`group relative rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md hover:scale-[1.02] hover:border-neutral-300 dark:hover:border-neutral-700 animate-fade-in-up ${
@@ -378,9 +389,9 @@ function NoteCard({
           </button>
         )}
       </div>
-      <h3 className="font-medium text-sm truncate dark:text-white">{note.title}</h3>
-      {note.content && (
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 line-clamp-3">{note.content}</p>
+      <h3 className="font-medium text-sm truncate dark:text-white">{renderedTitle}</h3>
+      {renderedContent && (
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 line-clamp-3">{renderedContent}</p>
       )}
       <p className="text-xs text-neutral-300 dark:text-neutral-600 mt-3">
         {new Date(note.updatedAt).toLocaleDateString()}

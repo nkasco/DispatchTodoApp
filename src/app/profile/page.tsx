@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { tasks, notes, projects, dispatches, accounts, users } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { ProfilePreferences } from "@/components/ProfilePreferences";
+import { parseStoredTemplatePresets } from "@/lib/template-presets";
 
 export default async function Profile() {
   const session = await auth();
@@ -40,6 +41,7 @@ export default async function Profile() {
         showAdminQuickAccess: users.showAdminQuickAccess,
         assistantEnabled: users.assistantEnabled,
         timeZone: users.timeZone,
+        templatePresets: users.templatePresets,
       })
       .from(users)
       .where(eq(users.id, userId))
@@ -52,6 +54,7 @@ export default async function Profile() {
   const showAdminQuickAccess = currentUserRecord?.showAdminQuickAccess ?? true;
   const assistantEnabled = currentUserRecord?.assistantEnabled ?? true;
   const timeZone = currentUserRecord?.timeZone ?? null;
+  const templatePresets = parseStoredTemplatePresets(currentUserRecord?.templatePresets ?? null);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 animate-fade-in-up">
@@ -118,6 +121,7 @@ export default async function Profile() {
         showAdminQuickAccess={showAdminQuickAccess}
         assistantEnabled={assistantEnabled}
         timeZone={timeZone}
+        templatePresets={templatePresets}
       />
 
       {isAdmin && (

@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb } from "@/test/db";
 import { mockSession } from "@/test/setup";
-import { users } from "@/db/schema";
+import { securitySettings, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { USER_CREATION_DISABLED_MESSAGE } from "@/lib/security-messages";
 
 let testDb: ReturnType<typeof createTestDb>;
 
 vi.mock("@/db", () => ({
   get db() {
     return testDb.db;
+  },
+  get sqlite() {
+    return testDb.sqlite;
   },
 }));
 
@@ -108,6 +112,58 @@ describe("Admin Users API", () => {
       expect(created).toBeDefined();
       expect(created?.password).toBeTruthy();
       expect(created?.password).not.toBe("password123");
+    });
+
+    it("normalizes mixed-case and whitespace email when creating users", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/admin/users", "POST", {
+          email: "  New.User@Example.COM ",
+          password: "password123",
+          name: "New User",
+        }),
+        {},
+      );
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.email).toBe("new.user@example.com");
+    });
+
+    it("rejects duplicate email when casing or whitespace differs", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/admin/users", "POST", {
+          email: "  Admin@Example.COM ",
+          password: "password123",
+        }),
+        {},
+      );
+
+      expect(res.status).toBe(409);
+      const data = await res.json();
+      expect(data.error).toContain("already registered");
+    });
+
+    it("blocks user creation when registration is disabled by admin setting", async () => {
+      testDb.db.insert(securitySettings).values({
+        id: 1,
+        databaseEncryptionEnabled: false,
+        shareAiApiKeyWithUsers: false,
+        userRegistrationEnabled: false,
+        updatedAt: new Date().toISOString(),
+      }).run();
+
+      const res = await POST(
+        jsonReq("http://localhost/api/admin/users", "POST", {
+          email: "new.user@example.com",
+          password: "password123",
+          name: "New User",
+        }),
+        {},
+      );
+
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.error).toBe(USER_CREATION_DISABLED_MESSAGE);
     });
   });
 

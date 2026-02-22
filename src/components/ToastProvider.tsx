@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import { generateClientId } from "@/lib/id";
 
 type ToastVariant = "success" | "error" | "info" | "undo";
 
@@ -26,7 +27,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((message: string, variant: ToastVariant, onUndo?: () => void) => {
-    const id = crypto.randomUUID();
+    const id = generateClientId();
     setToasts((prev) => [...prev, { id, message, variant, onUndo }]);
   }, []);
 

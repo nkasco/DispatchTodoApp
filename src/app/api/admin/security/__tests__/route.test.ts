@@ -69,6 +69,7 @@ describe("Admin Security API", () => {
           { name: "id" },
           { name: "databaseEncryptionEnabled" },
           { name: "shareAiApiKeyWithUsers" },
+          { name: "userRegistrationEnabled" },
           { name: "updatedAt" },
         ];
       }
@@ -90,6 +91,7 @@ describe("Admin Security API", () => {
     const data = await res.json();
     expect(data.databaseEncryptionEnabled).toBe(false);
     expect(data.shareAiApiKeyWithUsers).toBe(false);
+    expect(data.userRegistrationEnabled).toBe(true);
     expect(data.sqlCipherAvailable).toBe(true);
 
     const [stored] = testDb.db
@@ -119,6 +121,7 @@ describe("Admin Security API", () => {
     const data = await res.json();
     expect(data.databaseEncryptionEnabled).toBe(true);
     expect(data.shareAiApiKeyWithUsers).toBe(false);
+    expect(data.userRegistrationEnabled).toBe(true);
 
     expect(encryptionState.enabled).toBe(true);
     expect(encryptionState.encryptedKey).toBe("enc:supersecure123");
@@ -147,6 +150,7 @@ describe("Admin Security API", () => {
     const data = await res.json();
     expect(data.databaseEncryptionEnabled).toBe(false);
     expect(data.shareAiApiKeyWithUsers).toBe(false);
+    expect(data.userRegistrationEnabled).toBe(true);
     expect(encryptionState.enabled).toBe(false);
     expect(encryptionState.encryptedKey).toBeNull();
   });
@@ -169,7 +173,25 @@ describe("Admin Security API", () => {
     expect(stored?.shareAiApiKeyWithUsers).toBe(true);
   });
 
-  it("auto-adds missing shareAiApiKeyWithUsers column metadata path", async () => {
+  it("updates userRegistrationEnabled independently of encryption settings", async () => {
+    const res = await PUT(
+      jsonReq("http://localhost/api/admin/security", { userRegistrationEnabled: false }),
+      {},
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.userRegistrationEnabled).toBe(false);
+    expect(data.databaseEncryptionEnabled).toBe(false);
+
+    const [stored] = testDb.db
+      .select()
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .all();
+    expect(stored?.userRegistrationEnabled).toBe(false);
+  });
+
+  it("auto-adds missing compatibility columns on legacy database metadata path", async () => {
     sqliteStub.pragma.mockImplementation((statement: string) => {
       if (statement.includes("table_info")) {
         return [
@@ -185,6 +207,9 @@ describe("Admin Security API", () => {
     expect(res.status).toBe(200);
     expect(sqliteStub.exec).toHaveBeenCalledWith(
       expect.stringContaining('ADD COLUMN "shareAiApiKeyWithUsers"'),
+    );
+    expect(sqliteStub.exec).toHaveBeenCalledWith(
+      expect.stringContaining('ADD COLUMN "userRegistrationEnabled"'),
     );
   });
 });

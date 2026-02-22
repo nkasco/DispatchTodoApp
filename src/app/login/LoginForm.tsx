@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { USER_CREATION_DISABLED_MESSAGE } from "@/lib/security-messages";
 
-export function LoginForm() {
+interface LoginFormProps {
+  userRegistrationEnabled: boolean;
+}
+
+export function LoginForm({ userRegistrationEnabled }: LoginFormProps) {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -25,6 +30,12 @@ export function LoginForm() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!userRegistrationEnabled && mode === "register") {
+      setMode("login");
+    }
+  }, [mode, userRegistrationEnabled]);
 
   const handleSuccessfulLogin = () => {
     const root = document.getElementById("login-page-root");
@@ -67,6 +78,12 @@ export function LoginForm() {
 
     try {
       if (mode === "register") {
+        if (!userRegistrationEnabled) {
+          setError(USER_CREATION_DISABLED_MESSAGE);
+          setLoading(false);
+          return;
+        }
+
         // Register new user
         const res = await fetch("/api/auth/register", {
           method: "POST",
@@ -155,6 +172,11 @@ export function LoginForm() {
             {error}
           </div>
         )}
+        {!userRegistrationEnabled && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+            {USER_CREATION_DISABLED_MESSAGE}
+          </div>
+        )}
         <button
           type="submit"
           disabled={loading || isSuccessAnimating}
@@ -164,18 +186,20 @@ export function LoginForm() {
         </button>
       </form>
 
-      <div className="text-center text-sm">
-        <button
-          onClick={() => {
-            setMode(mode === "login" ? "register" : "login");
-            setError("");
-          }}
-          disabled={loading || isSuccessAnimating}
-          className="text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          {mode === "login" ? "Need an account? Register" : "Already have an account? Sign in"}
-        </button>
-      </div>
+      {userRegistrationEnabled && (
+        <div className="text-center text-sm">
+          <button
+            onClick={() => {
+              setMode(mode === "login" ? "register" : "login");
+              setError("");
+            }}
+            disabled={loading || isSuccessAnimating}
+            className="text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {mode === "login" ? "Need an account? Register" : "Already have an account? Sign in"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

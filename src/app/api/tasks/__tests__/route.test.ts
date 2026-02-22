@@ -101,6 +101,35 @@ describe("Tasks API", () => {
       expect(data.dueDate).toBe("2025-12-31");
     });
 
+    it("creates a recurring task with built-in recurrence", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Daily standup",
+          recurrenceType: "daily",
+        }),
+        {}
+      );
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.recurrenceType).toBe("daily");
+      expect(data.recurrenceRule).toBeNull();
+    });
+
+    it("creates a recurring task with custom recurrence rule", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Pay rent reminder",
+          recurrenceType: "custom",
+          recurrenceRule: { interval: 2, unit: "week" },
+        }),
+        {}
+      );
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.recurrenceType).toBe("custom");
+      expect(JSON.parse(data.recurrenceRule)).toEqual({ interval: 2, unit: "week" });
+    });
+
     it("trims whitespace from title", async () => {
       const res = await POST(
         jsonReq("http://localhost/api/tasks", "POST", { title: "  padded  " }),
@@ -150,6 +179,40 @@ describe("Tasks API", () => {
         jsonReq("http://localhost/api/tasks", "POST", {
           title: "test",
           priority: "critical",
+        }),
+        {}
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects invalid recurrenceType", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "test",
+          recurrenceType: "hourly",
+        }),
+        {}
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects recurrenceRule for non-custom recurrence", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "test",
+          recurrenceType: "daily",
+          recurrenceRule: { interval: 3, unit: "day" },
+        }),
+        {}
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects custom recurrence without rule", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "test",
+          recurrenceType: "custom",
         }),
         {}
       );
@@ -484,6 +547,65 @@ describe("Tasks API", () => {
       const res = await PUT(
         jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
           title: "",
+        }),
+        ctx(created.id)
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("updates recurrence settings", async () => {
+      const createRes = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", { title: "Recurring" }),
+        {}
+      );
+      const created = await createRes.json();
+
+      const res = await PUT(
+        jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
+          recurrenceType: "custom",
+          recurrenceRule: { interval: 3, unit: "day" },
+        }),
+        ctx(created.id)
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.recurrenceType).toBe("custom");
+      expect(JSON.parse(data.recurrenceRule)).toEqual({ interval: 3, unit: "day" });
+    });
+
+    it("clears recurrenceRule when recurrenceType changes away from custom", async () => {
+      const createRes = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Recurring",
+          recurrenceType: "custom",
+          recurrenceRule: { interval: 2, unit: "week" },
+        }),
+        {}
+      );
+      const created = await createRes.json();
+
+      const res = await PUT(
+        jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
+          recurrenceType: "monthly",
+        }),
+        ctx(created.id)
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.recurrenceType).toBe("monthly");
+      expect(data.recurrenceRule).toBeNull();
+    });
+
+    it("rejects recurrenceRule updates unless recurrenceType is custom", async () => {
+      const createRes = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", { title: "Not recurring" }),
+        {}
+      );
+      const created = await createRes.json();
+
+      const res = await PUT(
+        jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
+          recurrenceRule: { interval: 2, unit: "week" },
         }),
         ctx(created.id)
       );

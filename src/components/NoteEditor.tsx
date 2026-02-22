@@ -10,8 +10,9 @@ import type {
 } from "react";
 import { useRouter } from "next/navigation";
 import Markdown from "react-markdown";
-import { api, type Note } from "@/lib/client";
+import { api, type Note, type TextTemplatePreset } from "@/lib/client";
 import { useToast } from "@/components/ToastProvider";
+import { renderTemplate } from "@/lib/templates";
 import {
   IconCalendar,
   IconCheck,
@@ -196,6 +197,8 @@ export function NoteEditor({ noteId }: { noteId: string }) {
   const [copying, setCopying] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [noteTemplates, setNoteTemplates] = useState<TextTemplatePreset[]>([]);
+  const [loadingNoteTemplates, setLoadingNoteTemplates] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deleteTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,6 +216,28 @@ export function NoteEditor({ noteId }: { noteId: string }) {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [noteId]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingNoteTemplates(true);
+    api.me
+      .getPreferences()
+      .then((preferences) => {
+        if (!active) return;
+        setNoteTemplates(preferences.templatePresets.notes);
+      })
+      .catch(() => {
+        if (!active) return;
+        setNoteTemplates([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoadingNoteTemplates(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!deleteConfirm) return;
@@ -252,6 +277,13 @@ export function NoteEditor({ noteId }: { noteId: string }) {
     setContent(newContent);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => save(newTitle, newContent), 1000);
+  }
+
+  function handleApplyNoteTemplate(template: TextTemplatePreset) {
+    const nextTitle = title.trim() ? title : template.name;
+    handleChange(nextTitle, template.content);
+    setMode("edit");
+    setTimeout(() => titleRef.current?.focus(), 0);
   }
 
   async function handleDelete() {
@@ -342,6 +374,9 @@ export function NoteEditor({ noteId }: { noteId: string }) {
 
   const createdAt = note?.createdAt ? new Date(note.createdAt) : null;
   const updatedAt = note?.updatedAt ? new Date(note.updatedAt) : null;
+  const templateReferenceDate = note?.createdAt ?? new Date().toISOString();
+  const renderedTitle = renderTemplate(title || "Untitled Note", { referenceDate: templateReferenceDate });
+  const renderedContent = renderTemplate(content, { referenceDate: templateReferenceDate });
 
   if (loading) {
     return (
@@ -478,7 +513,7 @@ export function NoteEditor({ noteId }: { noteId: string }) {
             <div className="min-w-0">
               {isPreview ? (
                 <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white truncate">
-                  {title || "Untitled Note"}
+                  {renderedTitle}
                 </h1>
               ) : (
                 <input
@@ -513,8 +548,8 @@ export function NoteEditor({ noteId }: { noteId: string }) {
         <div className="space-y-4">
           {isPreview ? (
             <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 min-h-[420px] animate-fade-in-up shadow-sm text-neutral-700 dark:text-neutral-100">
-              {content ? (
-                <Markdown components={markdownComponents}>{content}</Markdown>
+              {renderedContent.trim() ? (
+                <Markdown components={markdownComponents}>{renderedContent}</Markdown>
               ) : (
                 <div className="flex flex-col items-center justify-center h-[360px] text-center">
                   <IconDocument className="w-12 h-12 text-neutral-300 dark:text-neutral-600 mb-3" />
@@ -553,6 +588,37 @@ export function NoteEditor({ noteId }: { noteId: string }) {
         </div>
 
         <aside className="space-y-4">
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+              Saved Templates
+            </h3>
+            <div className="mt-3 space-y-2">
+              {loadingNoteTemplates ? (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">Loading templates...</p>
+              ) : noteTemplates.length === 0 ? (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  No note templates yet. Add them in Profile {"->"} Template Library.
+                </p>
+              ) : (
+                noteTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => handleApplyNoteTemplate(template)}
+                    className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-left hover:border-neutral-300 dark:hover:border-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 truncate">
+                      {template.name}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400">
+                      {template.content}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
               Note Stats

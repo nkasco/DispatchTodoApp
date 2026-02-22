@@ -2,9 +2,37 @@
 
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
+export type TaskRecurrenceType = "none" | "daily" | "weekly" | "monthly" | "custom";
+export type TaskCustomRecurrenceUnit = "day" | "week" | "month";
 export type ProjectStatus = "active" | "paused" | "completed";
 export type UserRole = "member" | "admin";
 export type AIProvider = "openai" | "anthropic" | "google" | "ollama" | "lmstudio" | "custom";
+
+export interface TaskCustomRecurrenceRule {
+  interval: number;
+  unit: TaskCustomRecurrenceUnit;
+}
+
+export interface TaskTemplatePreset {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  recurrenceType: TaskRecurrenceType;
+  recurrenceRule: string | null;
+}
+
+export interface TextTemplatePreset {
+  id: string;
+  name: string;
+  content: string;
+}
+
+export interface TemplatePresets {
+  tasks: TaskTemplatePreset[];
+  notes: TextTemplatePreset[];
+  dispatches: TextTemplatePreset[];
+}
 
 export interface Project {
   id: string;
@@ -37,6 +65,8 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string | null;
+  recurrenceType: TaskRecurrenceType;
+  recurrenceRule: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,6 +148,7 @@ export interface AdminUser {
 export interface AdminSecuritySettings {
   databaseEncryptionEnabled: boolean;
   shareAiApiKeyWithUsers: boolean;
+  userRegistrationEnabled: boolean;
   sqlCipherAvailable: boolean;
   configured: boolean;
   updatedAt: string;
@@ -142,6 +173,14 @@ interface MePreferences {
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
   timeZone?: string | null;
+  templatePresets?: TemplatePresets;
+}
+
+export interface MePreferencesPayload {
+  showAdminQuickAccess: boolean;
+  assistantEnabled: boolean;
+  timeZone: string | null;
+  templatePresets: TemplatePresets;
 }
 
 export interface AIConfig {
@@ -329,6 +368,8 @@ export const api = {
       priority?: TaskPriority;
       dueDate?: string;
       projectId?: string | null;
+      recurrenceType?: TaskRecurrenceType;
+      recurrenceRule?: TaskCustomRecurrenceRule | null;
     }) =>
       request<Task>("/tasks", { method: "POST", body: JSON.stringify(data) }).then((task) => {
         emitTasksChanged({ action: "create", taskId: task.id });
@@ -344,6 +385,8 @@ export const api = {
         priority?: TaskPriority;
         dueDate?: string | null;
         projectId?: string | null;
+        recurrenceType?: TaskRecurrenceType;
+        recurrenceRule?: TaskCustomRecurrenceRule | null;
       },
     ) =>
       request<Task>(`/tasks/${id}`, { method: "PUT", body: JSON.stringify(data) }).then((task) => {
@@ -509,7 +552,7 @@ export const api = {
 
     getSecurity: () => request<AdminSecuritySettings>("/admin/security"),
 
-    updateSecurity: (data: { enabled?: boolean; passphrase?: string; shareAiApiKeyWithUsers?: boolean }) =>
+    updateSecurity: (data: { enabled?: boolean; passphrase?: string; shareAiApiKeyWithUsers?: boolean; userRegistrationEnabled?: boolean }) =>
       request<AdminSecuritySettings>("/admin/security", {
         method: "PUT",
         body: JSON.stringify(data),
@@ -568,7 +611,10 @@ export const api = {
   },
 
   me: {
+    getPreferences: () =>
+      request<MePreferencesPayload & { user: { id: string } }>("/me"),
+
     updatePreferences: (data: MePreferences) =>
-      request<MePreferences>("/me", { method: "PUT", body: JSON.stringify(data) }),
+      request<MePreferencesPayload>("/me", { method: "PUT", body: JSON.stringify(data) }),
   },
 };

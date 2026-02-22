@@ -23,6 +23,7 @@ export function createTestDb() {
       "role" text NOT NULL DEFAULT 'member',
       "frozenAt" text,
       "timeZone" text,
+      "templatePresets" text,
       "showAdminQuickAccess" integer NOT NULL DEFAULT 1,
       "assistantEnabled" integer NOT NULL DEFAULT 1
     );
@@ -74,6 +75,8 @@ export function createTestDb() {
       "status" text NOT NULL DEFAULT 'open',
       "priority" text NOT NULL DEFAULT 'medium',
       "dueDate" text,
+      "recurrenceType" text NOT NULL DEFAULT 'none',
+      "recurrenceRule" text,
       "deletedAt" text,
       "createdAt" text NOT NULL DEFAULT (current_timestamp),
       "updatedAt" text NOT NULL DEFAULT (current_timestamp)
@@ -132,6 +135,7 @@ export function createTestDb() {
       "id" integer PRIMARY KEY NOT NULL DEFAULT 1,
       "databaseEncryptionEnabled" integer NOT NULL DEFAULT 0,
       "shareAiApiKeyWithUsers" integer NOT NULL DEFAULT 0,
+      "userRegistrationEnabled" integer NOT NULL DEFAULT 1,
       "updatedAt" text NOT NULL DEFAULT (current_timestamp)
     );
 

@@ -7,9 +7,11 @@ import {
   type Dispatch,
   type Task,
   type TaskStatus,
+  type TextTemplatePreset,
 } from "@/lib/client";
 import { useToast } from "@/components/ToastProvider";
 import { DispatchHistoryOverlay } from "@/components/DispatchHistoryOverlay";
+import { renderTemplate } from "@/lib/templates";
 import {
   IconBolt,
   IconCalendar,
@@ -50,6 +52,8 @@ export function DispatchPage() {
   const [unfinalizing, setUnfinalizing] = useState(false);
   const [unfinalizeWarning, setUnfinalizeWarning] = useState<{ nextDate: string } | null>(null);
   const [completingIds, setCompletingIds] = useState<string[]>([]);
+  const [dispatchTemplates, setDispatchTemplates] = useState<TextTemplatePreset[]>([]);
+  const [loadingDispatchTemplates, setLoadingDispatchTemplates] = useState(false);
   const completionTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const previousTodayRef = useRef(today);
 
@@ -109,6 +113,28 @@ export function DispatchPage() {
     [],
   );
 
+  useEffect(() => {
+    let active = true;
+    setLoadingDispatchTemplates(true);
+    api.me
+      .getPreferences()
+      .then((preferences) => {
+        if (!active) return;
+        setDispatchTemplates(preferences.templatePresets.dispatches);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDispatchTemplates([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoadingDispatchTemplates(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function queueCompletionCleanup(taskId: string) {
     const existing = completionTimeoutsRef.current[taskId];
     if (existing) {
@@ -143,6 +169,10 @@ export function DispatchPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function applyDispatchTemplate(template: TextTemplatePreset) {
+    setSummary(template.content);
   }
 
   async function handleLinkTask(taskId: string) {
@@ -209,26 +239,29 @@ export function DispatchPage() {
     try {
       await api.tasks.update(task.id, { status: next });
       if (next === "done") {
-        toast.undo(`"${task.title}" completed`, async () => {
-          clearCompletionState(task.id);
-          setLinkedTasks((prev) =>
-            prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
-          );
-          setAllTasks((prev) =>
-            prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
-          );
-          try {
-            await api.tasks.update(task.id, { status: previousStatus });
-          } catch {
+        toast.undo(
+          `"${renderTemplate(task.title, { referenceDate: task.dueDate ?? task.createdAt })}" completed`,
+          async () => {
+            clearCompletionState(task.id);
             setLinkedTasks((prev) =>
-              prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+              prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
             );
             setAllTasks((prev) =>
-              prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+              prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
             );
-            toast.error("Failed to undo");
-          }
-        });
+            try {
+              await api.tasks.update(task.id, { status: previousStatus });
+            } catch {
+              setLinkedTasks((prev) =>
+                prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+              );
+              setAllTasks((prev) =>
+                prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+              );
+              toast.error("Failed to undo");
+            }
+          },
+        );
       }
     } catch {
       clearCompletionState(task.id);
@@ -333,6 +366,7 @@ export function DispatchPage() {
 
   const doneCount = linkedTasks.filter((t) => t.status === "done").length;
   const progressPercent = linkedTasks.length > 0 ? Math.round((doneCount / linkedTasks.length) * 100) : 0;
+  const renderedSummary = renderTemplate(dispatch?.summary ?? "", { referenceDate: date });
 
   if (loading) {
     return (
@@ -501,10 +535,36 @@ export function DispatchPage() {
         <div className="p-4 space-y-3">
           {dispatch?.finalized ? (
             <p className="text-sm text-neutral-600 dark:text-neutral-300 whitespace-pre-wrap">
-              {dispatch.summary || "No summary written."}
+              {renderedSummary || "No summary written."}
             </p>
           ) : (
             <>
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/50 p-2.5 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                  Saved Dispatch Templates
+                </p>
+                {loadingDispatchTemplates ? (
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Loading templates...</p>
+                ) : dispatchTemplates.length === 0 ? (
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    No dispatch templates yet. Add them in Profile {"->"} Template Library.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {dispatchTemplates.map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => applyDispatchTemplate(template)}
+                        className="rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-1 text-xs font-medium text-neutral-700 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-500 active:scale-95 transition-all"
+                      >
+                        {template.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
@@ -665,7 +725,9 @@ export function DispatchPage() {
                       <span
                         className={`block h-2.5 w-2.5 rounded-full flex-shrink-0 ${STATUS_STYLES[task.status].dot}`}
                       />
-                      <span className="flex-1 truncate">{task.title}</span>
+                      <span className="flex-1 truncate">
+                        {renderTemplate(task.title, { referenceDate: task.dueDate ?? task.createdAt })}
+                      </span>
                       {task.dueDate && (
                         <span className="text-xs text-neutral-400 dark:text-neutral-500">{task.dueDate}</span>
                       )}
@@ -769,6 +831,11 @@ function LinkedTaskRow({
   onUnlink: () => void;
 }) {
   const [ringKey, setRingKey] = useState(0);
+  const referenceDate = task.dueDate ?? task.createdAt;
+  const renderedTitle = renderTemplate(task.title, { referenceDate });
+  const renderedDescription = task.description
+    ? renderTemplate(task.description, { referenceDate })
+    : "";
 
   function handleStatusClick() {
     setRingKey((k) => k + 1);
@@ -819,11 +886,11 @@ function LinkedTaskRow({
             task.status === "done" && !isCompleting ? "line-through" : ""
           } ${isCompleting ? "task-title-completing" : ""}`}
         >
-          {task.title}
+          {renderedTitle}
         </p>
-        {task.description && (
+        {renderedDescription && (
           <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
-            {task.description}
+            {renderedDescription}
           </p>
         )}
       </div>

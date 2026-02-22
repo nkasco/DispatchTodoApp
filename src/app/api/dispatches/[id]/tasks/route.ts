@@ -24,11 +24,14 @@ export const GET = withAuth(async (req, session, ctx) => {
     .select({
       id: tasks.id,
       userId: tasks.userId,
+      projectId: tasks.projectId,
       title: tasks.title,
       description: tasks.description,
       status: tasks.status,
       priority: tasks.priority,
       dueDate: tasks.dueDate,
+      recurrenceType: tasks.recurrenceType,
+      recurrenceRule: tasks.recurrenceRule,
       createdAt: tasks.createdAt,
       updatedAt: tasks.updatedAt,
     })

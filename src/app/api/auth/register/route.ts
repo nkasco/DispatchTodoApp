@@ -4,9 +4,16 @@ import { users } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { jsonResponse, errorResponse } from "@/lib/api";
+import { normalizeEmail, isValidEmail } from "@/lib/auth-email";
+import { USER_CREATION_DISABLED_MESSAGE } from "@/lib/security-messages";
+import { isUserRegistrationEnabled } from "@/lib/security-settings";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isUserRegistrationEnabled())) {
+      return errorResponse(USER_CREATION_DISABLED_MESSAGE, 403);
+    }
+
     const body = await req.json();
     const { email, password, name } = body;
 
@@ -19,11 +26,10 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid input", 400);
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return errorResponse("Invalid email format", 400);
     }
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LoginForm } from "./LoginForm";
 import { BrandMark } from "@/components/BrandMark";
+import { isUserRegistrationEnabled } from "@/lib/security-settings";
 
 export default async function LoginPage({
   searchParams,
@@ -17,6 +18,12 @@ export default async function LoginPage({
   const { error } = await searchParams;
   const hasGitHub = !!(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.4.3";
+  let userRegistrationEnabled = true;
+  try {
+    userRegistrationEnabled = await isUserRegistrationEnabled();
+  } catch (loadError) {
+    console.error("Failed to load user registration setting:", loadError);
+  }
 
   const errorMessages: Record<string, string> = {
     OAuthAccountNotLinked: "This GitHub account is already linked to a different user.",
@@ -75,7 +82,7 @@ export default async function LoginPage({
                 <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
               </div>
             )}
-            <LoginForm />
+            <LoginForm userRegistrationEnabled={userRegistrationEnabled} />
           </div>
         </div>
 

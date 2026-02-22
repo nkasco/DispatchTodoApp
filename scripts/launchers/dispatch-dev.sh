@@ -17,7 +17,7 @@
 #   studio   Open Drizzle Studio (database GUI)
 #   test     Run the test suite
 #   lint     Run ESLint
-#   publish  Build dev image, tag, and push container image
+#   publish  Publish amd64 image + additional arm64 image
 #   resetdb  Remove dev Docker volumes (fresh SQLite state)
 #   freshstart Run full dev cleanup (containers, volumes, local images)
 #   version  Show version number
@@ -89,7 +89,7 @@ show_help() {
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "studio"  "Open Drizzle Studio (database GUI)"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "test"    "Run the test suite"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "lint"    "Run ESLint"
-    printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "publish" "Build dev image, tag, and push container image"
+    printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "publish" "Publish amd64 image + additional arm64 image"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "resetdb" "Remove dev Docker volumes (fresh SQLite state)"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "freshstart" "Run full dev cleanup (containers, volumes, local images)"
     printf "    ${CYAN}%-10s${RESET} ${DIM}%s${RESET}\n" "version" "Show version number"
@@ -135,6 +135,50 @@ get_env_file_value() {
     done < ".env.local"
 
     return 1
+}
+
+derive_arm_image_tag() {
+    local image="$1"
+    local last_segment=""
+    local repo=""
+    local tag=""
+
+    if [[ "$image" == *"@"* ]]; then
+        echo -e "  ${RED}Digest-based image references are not supported for ARM tag derivation: ${image}${RESET}" >&2
+        return 1
+    fi
+
+    last_segment="${image##*/}"
+    if [[ "$last_segment" == *:* ]]; then
+        repo="${image%:*}"
+        tag="${image##*:}"
+    else
+        repo="$image"
+        tag="latest"
+    fi
+
+    printf "%s:%s-arm64" "$repo" "$tag"
+}
+
+ensure_buildx_builder() {
+    local builder_name="${1:-dispatch-multiarch}"
+
+    if ! docker buildx version >/dev/null 2>&1; then
+        echo -e "  ${RED}Docker Buildx is required for ARM publishing. Install or enable Docker Buildx and retry.${RESET}"
+        exit 1
+    fi
+
+    echo -e "  ${DIM}Installing binfmt emulation for arm64 (QEMU)...${RESET}"
+    docker run --privileged --rm tonistiigi/binfmt --install arm64 >/dev/null
+
+    if ! docker buildx inspect "$builder_name" >/dev/null 2>&1; then
+        echo -e "  ${DIM}Creating Buildx builder '${builder_name}'...${RESET}"
+        docker buildx create --name "$builder_name" --driver docker-container --use >/dev/null
+    else
+        docker buildx use "$builder_name" >/dev/null
+    fi
+
+    docker buildx inspect --bootstrap >/dev/null
 }
 
 prompt_yes_no() {
@@ -434,7 +478,7 @@ cmd_publish() {
         target_image="ghcr.io/nkasco/dispatchtodoapp:latest"
     fi
 
-    echo -e "  [1/3] ${CYAN}Building image (${source_image}) with docker-compose.dev.yml...${RESET}"
+    echo -e "  [1/4] ${CYAN}Building image (${source_image}) with docker-compose.dev.yml...${RESET}"
     if [ -f ".env.local" ]; then
         docker compose -f docker-compose.dev.yml --env-file .env.local build
     else
@@ -442,7 +486,7 @@ cmd_publish() {
     fi
     echo ""
 
-    echo -e "  [2/3] ${CYAN}Tagging image for publish target (${target_image})...${RESET}"
+    echo -e "  [2/4] ${CYAN}Tagging image for publish target (${target_image})...${RESET}"
     if [ "$source_image" != "$target_image" ]; then
         docker tag "$source_image" "$target_image"
     else
@@ -450,13 +494,28 @@ cmd_publish() {
     fi
     echo ""
 
-    echo -e "  [3/3] ${CYAN}Pushing image (${target_image})...${RESET}"
+    echo -e "  [3/4] ${CYAN}Pushing image (${target_image})...${RESET}"
     docker push "$target_image" || {
         echo -e "  ${RED}Docker push failed. Make sure you are logged into the target registry.${RESET}"
         exit 1
     }
     echo ""
-    echo -e "  ${GREEN}Publish complete: ${target_image}${RESET}"
+
+    local arm_image=""
+    local buildx_builder="${DISPATCH_BUILDX_BUILDER:-dispatch-multiarch}"
+    arm_image="$(derive_arm_image_tag "$target_image")"
+
+    echo -e "  [4/4] ${CYAN}Building and pushing ARM image (${arm_image}) with Buildx/QEMU...${RESET}"
+    ensure_buildx_builder "$buildx_builder"
+    docker buildx build --platform linux/arm64 --file Dockerfile --tag "$arm_image" --push . || {
+        echo -e "  ${RED}ARM image build/push failed.${RESET}"
+        exit 1
+    }
+    echo ""
+
+    echo -e "  ${GREEN}Publish complete:${RESET}"
+    echo -e "  ${DIM}  amd64: ${target_image}${RESET}"
+    echo -e "  ${DIM}  arm64: ${arm_image}${RESET}"
     echo ""
 }
 

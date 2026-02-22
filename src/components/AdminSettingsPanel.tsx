@@ -5,6 +5,7 @@ import { api, type AdminSecuritySettings, type AdminUser, type AdminVersionStatu
 import { useToast } from "@/components/ToastProvider";
 import { CustomSelect } from "@/components/CustomSelect";
 import { IconCheckCircle, IconChevronDown, IconClock, IconKey, IconShield, IconTrash } from "@/components/icons";
+import { USER_CREATION_DISABLED_MESSAGE } from "@/lib/security-messages";
 
 interface AdminSettingsPanelProps {
   currentUserId: string;
@@ -98,6 +99,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const [encryptionPassphrase, setEncryptionPassphrase] = useState("");
   const [shareAiApiKeyWithUsers, setShareAiApiKeyWithUsers] = useState(false);
+  const [userRegistrationEnabled, setUserRegistrationEnabled] = useState(true);
   const [userManagementOpen, setUserManagementOpen] = useState(false);
 
   const usersById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
@@ -121,6 +123,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
       setSecurity(nextSecurity);
       setEncryptionEnabled(nextSecurity.databaseEncryptionEnabled);
       setShareAiApiKeyWithUsers(nextSecurity.shareAiApiKeyWithUsers);
+      setUserRegistrationEnabled(nextSecurity.userRegistrationEnabled);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to load administration data");
     } finally {
@@ -156,6 +159,11 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
 
   async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!userRegistrationEnabled) {
+      toast.error(USER_CREATION_DISABLED_MESSAGE);
+      return;
+    }
 
     if (!createForm.email || !createForm.password) {
       toast.error("Email and password are required");
@@ -234,6 +242,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
       });
       setSecurity(next);
       setEncryptionEnabled(next.databaseEncryptionEnabled);
+      setUserRegistrationEnabled(next.userRegistrationEnabled);
       setEncryptionPassphrase("");
       toast.success("Security settings updated");
     } catch (error) {
@@ -251,9 +260,26 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
       });
       setSecurity(next);
       setShareAiApiKeyWithUsers(next.shareAiApiKeyWithUsers);
+      setUserRegistrationEnabled(next.userRegistrationEnabled);
       toast.success("AI key sharing setting updated");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update AI key sharing");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function handleSaveUserRegistration() {
+    setBusyKey("user-registration");
+    try {
+      const next = await api.admin.updateSecurity({
+        userRegistrationEnabled,
+      });
+      setSecurity(next);
+      setUserRegistrationEnabled(next.userRegistrationEnabled);
+      toast.success("User registration setting updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update user registration setting");
     } finally {
       setBusyKey(null);
     }
@@ -384,11 +410,17 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
 
       <div className="space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-950/40 p-4">
         <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Create User</h3>
+        {!userRegistrationEnabled && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+            {USER_CREATION_DISABLED_MESSAGE}
+          </p>
+        )}
         <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-end">
           <input
             value={createForm.name}
             onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
             placeholder="Name"
+            disabled={!userRegistrationEnabled}
             className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/80 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
           <input
@@ -396,6 +428,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
             onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
             placeholder="Email"
             type="email"
+            disabled={!userRegistrationEnabled}
             className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/80 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
           <input
@@ -403,6 +436,7 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
             onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
             placeholder="Password"
             type="password"
+            disabled={!userRegistrationEnabled}
             className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/80 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
           <CustomSelect
@@ -410,15 +444,41 @@ export function AdminSettingsPanel({ currentUserId }: AdminSettingsPanelProps) {
             value={createForm.role}
             onChange={(value) => setCreateForm((prev) => ({ ...prev, role: value as UserRole }))}
             options={roleOptions}
+            disabled={!userRegistrationEnabled}
           />
           <button
             type="submit"
-            disabled={busyKey === "create-user"}
+            disabled={busyKey === "create-user" || !userRegistrationEnabled}
             className="h-[42px] rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
           >
             Create
           </button>
         </form>
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-950/40 p-4">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">User Registration</h3>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Control whether Dispatch allows creation of new user accounts across registration and admin user creation.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <input
+              type="checkbox"
+              checked={userRegistrationEnabled}
+              onChange={(event) => setUserRegistrationEnabled(event.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300 dark:border-neutral-700"
+            />
+            Allow new user creation
+          </label>
+          <button
+            onClick={handleSaveUserRegistration}
+            disabled={busyKey === "user-registration"}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-950/40 p-4">

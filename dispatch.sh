@@ -54,6 +54,7 @@ show_help() {
   echo "    help       Show this help message"
   echo ""
   echo -e "  ${DIM}Production config is stored in .env.prod${RESET}"
+  echo -e "  ${DIM}Image selection is architecture-aware (amd64/arm64).${RESET}"
   echo -e "  ${DIM}Developer workflow (npm build/test/dev): ./scripts/launchers/dispatch-dev.sh${RESET}"
   echo ""
 }
@@ -107,6 +108,116 @@ get_env_value() {
   done < "$ENV_FILE"
 
   return 1
+}
+
+get_configured_dispatch_image() {
+  local env_image="${DISPATCH_IMAGE:-}"
+  local file_image=""
+
+  if [ -n "$env_image" ]; then
+    echo "$env_image"
+    return
+  fi
+
+  file_image="$(get_env_value "DISPATCH_IMAGE" || true)"
+  if [ -n "$file_image" ]; then
+    echo "$file_image"
+    return
+  fi
+
+  echo "ghcr.io/nkasco/dispatchtodoapp:latest"
+}
+
+get_docker_architecture() {
+  local raw_arch=""
+  local normalized=""
+
+  raw_arch="$(docker version --format '{{.Server.Arch}}' 2>/dev/null || true)"
+  if [ -z "$raw_arch" ]; then
+    raw_arch="$(docker info --format '{{.Architecture}}' 2>/dev/null || true)"
+  fi
+  if [ -z "$raw_arch" ]; then
+    raw_arch="$(uname -m 2>/dev/null || true)"
+  fi
+
+  normalized="$(printf "%s" "$raw_arch" | tr '[:upper:]' '[:lower:]')"
+  case "$normalized" in
+    amd64|x86_64|x64) echo "amd64" ;;
+    arm64|aarch64) echo "arm64" ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+has_explicit_arch_tag() {
+  local image="$1"
+  local last_segment=""
+  local tag=""
+
+  if [[ "$image" == *"@"* ]]; then
+    return 1
+  fi
+
+  last_segment="${image##*/}"
+  if [[ "$last_segment" != *:* ]]; then
+    return 1
+  fi
+
+  tag="${image##*:}"
+  tag="$(printf "%s" "$tag" | tr '[:upper:]' '[:lower:]')"
+  [[ "$tag" == *"-arm64" || "$tag" == *"-amd64" ]]
+}
+
+is_dispatch_image() {
+  local image="$1"
+  local normalized=""
+
+  normalized="$(printf "%s" "$image" | tr '[:upper:]' '[:lower:]')"
+  [[ "$normalized" =~ (^|/)dispatchtodoapp(:|@|$) ]]
+}
+
+convert_to_arm_image_tag() {
+  local image="$1"
+  local last_segment=""
+  local repo=""
+  local tag=""
+
+  last_segment="${image##*/}"
+  if [[ "$last_segment" == *:* ]]; then
+    repo="${image%:*}"
+    tag="${image##*:}"
+  else
+    repo="$image"
+    tag="latest"
+  fi
+
+  printf "%s:%s-arm64" "$repo" "$tag"
+}
+
+resolve_dispatch_image_for_host() {
+  local image="$1"
+  local arch=""
+
+  if [ -z "$image" ]; then
+    image="ghcr.io/nkasco/dispatchtodoapp:latest"
+  fi
+
+  if [[ "$image" == *"@"* ]] || has_explicit_arch_tag "$image"; then
+    echo "$image"
+    return
+  fi
+
+  if ! is_dispatch_image "$image"; then
+    echo "$image"
+    return
+  fi
+
+  arch="$(get_docker_architecture)"
+  if [ "$arch" = "arm64" ]; then
+    convert_to_arm_image_tag "$image"
+    return
+  fi
+
+  echo "$image"
 }
 
 prompt_value() {
@@ -207,7 +318,13 @@ write_prod_env_file() {
 }
 
 run_compose() {
-  docker compose --env-file "$ENV_FILE" "$@"
+  local configured_image=""
+  local resolved_image=""
+
+  configured_image="$(get_configured_dispatch_image)"
+  resolved_image="$(resolve_dispatch_image_for_host "$configured_image")"
+
+  DISPATCH_IMAGE="$resolved_image" docker compose --env-file "$ENV_FILE" "$@"
 }
 
 has_http_client() {
@@ -299,6 +416,7 @@ cmd_setup() {
   if [ -z "$existing_image" ]; then
     existing_image="${DISPATCH_IMAGE:-ghcr.io/nkasco/dispatchtodoapp:latest}"
   fi
+  existing_image="$(resolve_dispatch_image_for_host "$existing_image")"
   dispatch_image="$(prompt_value "Container image to run (DISPATCH_IMAGE)" "$existing_image")"
 
   if [ -n "$existing_gh_id" ] && [ -n "$existing_gh_secret" ]; then

@@ -14,6 +14,7 @@ import { CustomSelect } from "@/components/CustomSelect";
 import { useToast } from "@/components/ToastProvider";
 import { IconCheckCircle, IconPlus, IconPencil, IconTrash } from "@/components/icons";
 import { PROJECT_COLORS } from "@/lib/projects";
+import { renderTemplate } from "@/lib/templates";
 
 type SortField = "createdAt" | "dueDate" | "priority";
 
@@ -237,20 +238,23 @@ export function TasksPage() {
     try {
       await api.tasks.update(task.id, { status: next });
       if (next === "done") {
-        toast.undo(`"${task.title}" completed`, async () => {
-          clearCompletionState(task.id);
-          setTasks((prev) =>
-            prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
-          );
-          try {
-            await api.tasks.update(task.id, { status: previousStatus });
-          } catch {
+        toast.undo(
+          `"${renderTemplate(task.title, { referenceDate: task.dueDate ?? task.createdAt })}" completed`,
+          async () => {
+            clearCompletionState(task.id);
             setTasks((prev) =>
-              prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+              prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t)),
             );
-            toast.error("Failed to undo");
-          }
-        });
+            try {
+              await api.tasks.update(task.id, { status: previousStatus });
+            } catch {
+              setTasks((prev) =>
+                prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+              );
+              toast.error("Failed to undo");
+            }
+          },
+        );
       }
     } catch {
       clearCompletionState(task.id);
@@ -670,6 +674,11 @@ function TaskRow({
   onDeleteConfirm: () => void;
 }) {
   const [ringKey, setRingKey] = useState(0);
+  const referenceDate = task.dueDate ?? task.createdAt;
+  const renderedTitle = renderTemplate(task.title, { referenceDate });
+  const renderedDescription = task.description
+    ? renderTemplate(task.description, { referenceDate })
+    : "";
 
   function handleStatusClick() {
     if (task.status !== "done") {
@@ -710,11 +719,11 @@ function TaskRow({
             task.status === "done" && !isCompleting ? "line-through" : ""
           } ${isCompleting ? "task-title-completing" : ""}`}
         >
-          {task.title}
+          {renderedTitle}
         </p>
-        {task.description && (
+        {renderedDescription && (
           <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
-            {task.description}
+            {renderedDescription}
           </p>
         )}
       </div>

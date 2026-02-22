@@ -1,4 +1,10 @@
 import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
+import {
+  isTaskRecurrenceType,
+  parseTaskCustomRecurrenceRule,
+  serializeTaskCustomRecurrenceRule,
+  type TaskRecurrenceType,
+} from "@/lib/task-recurrence";
 import { db } from "@/db";
 import { tasks, projects } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -35,7 +41,16 @@ export const PUT = withAuth(async (req, session, ctx) => {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const { title, description, status, priority, dueDate, projectId } = body as Record<string, unknown>;
+  const {
+    title,
+    description,
+    status,
+    priority,
+    dueDate,
+    projectId,
+    recurrenceType,
+    recurrenceRule,
+  } = body as Record<string, unknown>;
 
   if (title !== undefined && (typeof title !== "string" || title.trim().length === 0)) {
     return errorResponse("title must be a non-empty string", 400);
@@ -73,6 +88,10 @@ export const PUT = withAuth(async (req, session, ctx) => {
     return errorResponse("projectId must be a string or null", 400);
   }
 
+  if (recurrenceType !== undefined && !isTaskRecurrenceType(recurrenceType)) {
+    return errorResponse("recurrenceType must be one of: none, daily, weekly, monthly, custom", 400);
+  }
+
   let resolvedProjectId: string | null | undefined = undefined;
   if (projectId === null) {
     resolvedProjectId = null;
@@ -89,12 +108,52 @@ export const PUT = withAuth(async (req, session, ctx) => {
 
   // Check task exists, belongs to user, and is not soft-deleted
   const [existing] = await db
-    .select({ id: tasks.id })
+    .select({
+      id: tasks.id,
+      recurrenceType: tasks.recurrenceType,
+      recurrenceRule: tasks.recurrenceRule,
+    })
     .from(tasks)
     .where(and(eq(tasks.id, id), eq(tasks.userId, session.user!.id!), isNull(tasks.deletedAt)));
 
   if (!existing) {
     return errorResponse("Task not found", 404);
+  }
+
+  const hasRecurrenceType = Object.prototype.hasOwnProperty.call(body, "recurrenceType");
+  const hasRecurrenceRule = Object.prototype.hasOwnProperty.call(body, "recurrenceRule");
+
+  const nextRecurrenceType = hasRecurrenceType
+    ? recurrenceType as TaskRecurrenceType
+    : existing.recurrenceType;
+  let nextRecurrenceRule = existing.recurrenceRule;
+
+  if (hasRecurrenceRule) {
+    if (recurrenceRule === null) {
+      nextRecurrenceRule = null;
+    } else {
+      const parsedRule = parseTaskCustomRecurrenceRule(recurrenceRule);
+      if (!parsedRule) {
+        return errorResponse(
+          "recurrenceRule must include interval (1-365) and unit (day|week|month)",
+          400,
+        );
+      }
+      nextRecurrenceRule = serializeTaskCustomRecurrenceRule(parsedRule);
+    }
+  }
+
+  if (nextRecurrenceType === "custom") {
+    if (!nextRecurrenceRule) {
+      return errorResponse("recurrenceRule is required when recurrenceType is custom", 400);
+    }
+  } else {
+    if (hasRecurrenceRule && recurrenceRule !== null && recurrenceRule !== undefined) {
+      return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
+    }
+    if (hasRecurrenceType) {
+      nextRecurrenceRule = null;
+    }
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
@@ -104,6 +163,8 @@ export const PUT = withAuth(async (req, session, ctx) => {
   if (priority !== undefined) updates.priority = priority;
   if (dueDate !== undefined) updates.dueDate = dueDate;
   if (projectId !== undefined) updates.projectId = resolvedProjectId;
+  if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
+  if (hasRecurrenceRule || hasRecurrenceType) updates.recurrenceRule = nextRecurrenceRule;
 
   const [updated] = await db
     .update(tasks)

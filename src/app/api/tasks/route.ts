@@ -1,5 +1,11 @@
 import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
+import {
+  isTaskRecurrenceType,
+  parseTaskCustomRecurrenceRule,
+  serializeTaskCustomRecurrenceRule,
+  type TaskRecurrenceType,
+} from "@/lib/task-recurrence";
 import { db } from "@/db";
 import { tasks, projects } from "@/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
@@ -76,7 +82,16 @@ export const POST = withAuth(async (req, session) => {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const { title, description, status, priority, dueDate, projectId } = body as Record<string, unknown>;
+  const {
+    title,
+    description,
+    status,
+    priority,
+    dueDate,
+    projectId,
+    recurrenceType,
+    recurrenceRule,
+  } = body as Record<string, unknown>;
 
   if (!title || typeof title !== "string" || title.trim().length === 0) {
     return errorResponse("title is required and must be a non-empty string", 400);
@@ -114,6 +129,26 @@ export const POST = withAuth(async (req, session) => {
     return errorResponse("projectId must be a string or null", 400);
   }
 
+  if (recurrenceType !== undefined && !isTaskRecurrenceType(recurrenceType)) {
+    return errorResponse("recurrenceType must be one of: none, daily, weekly, monthly, custom", 400);
+  }
+
+  const resolvedRecurrenceType = (recurrenceType as TaskRecurrenceType | undefined) ?? "none";
+  let resolvedRecurrenceRule: string | null = null;
+
+  if (resolvedRecurrenceType === "custom") {
+    const parsedRule = parseTaskCustomRecurrenceRule(recurrenceRule);
+    if (!parsedRule) {
+      return errorResponse(
+        "recurrenceRule is required for custom recurrence and must include interval (1-365) and unit (day|week|month)",
+        400,
+      );
+    }
+    resolvedRecurrenceRule = serializeTaskCustomRecurrenceRule(parsedRule);
+  } else if (recurrenceRule !== undefined && recurrenceRule !== null) {
+    return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
+  }
+
   let resolvedProjectId: string | null | undefined = undefined;
   if (projectId === null) {
     resolvedProjectId = null;
@@ -140,6 +175,8 @@ export const POST = withAuth(async (req, session) => {
       status: (status as typeof VALID_STATUSES[number]) ?? "open",
       priority: (priority as typeof VALID_PRIORITIES[number]) ?? "medium",
       dueDate: dueDate as string | undefined,
+      recurrenceType: resolvedRecurrenceType,
+      recurrenceRule: resolvedRecurrenceRule,
       createdAt: now,
       updatedAt: now,
     })

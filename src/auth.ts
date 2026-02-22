@@ -5,6 +5,7 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db, sqlite } from "@/db";
 import { users, accounts, sessions } from "@/db/schema";
 import { ensureDbEncryptionForRuntime } from "@/lib/db-encryption";
+import { normalizeEmail } from "@/lib/auth-email";
 import { and, eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -76,8 +77,13 @@ providers.push(
     },
     async authorize(credentials) {
       ensureAuthDatabaseReady();
-      const email = credentials?.email as string;
-      const password = credentials?.password as string;
+      const emailInput = credentials?.email;
+      const passwordInput = credentials?.password;
+
+      if (typeof emailInput !== "string" || typeof passwordInput !== "string") return null;
+
+      const email = normalizeEmail(emailInput);
+      const password = passwordInput;
 
       if (!email || !password) return null;
 

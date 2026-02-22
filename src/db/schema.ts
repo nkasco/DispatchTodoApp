@@ -15,6 +15,7 @@ export const users = sqliteTable("user", {
   role: text("role", { enum: ["member", "admin"] }).notNull().default("member"),
   frozenAt: text("frozenAt"),
   timeZone: text("timeZone"),
+  templatePresets: text("templatePresets"),
   showAdminQuickAccess: integer("showAdminQuickAccess", { mode: "boolean" })
     .notNull()
     .default(true),
@@ -101,6 +102,12 @@ export const tasks = sqliteTable(
       .notNull()
       .default("medium"),
     dueDate: text("dueDate"),
+    recurrenceType: text("recurrenceType", {
+      enum: ["none", "daily", "weekly", "monthly", "custom"],
+    })
+      .notNull()
+      .default("none"),
+    recurrenceRule: text("recurrenceRule"),
     deletedAt: text("deletedAt"),
     createdAt: text("createdAt")
       .notNull()
@@ -209,6 +216,9 @@ export const securitySettings = sqliteTable("security_setting", {
   shareAiApiKeyWithUsers: integer("shareAiApiKeyWithUsers", { mode: "boolean" })
     .notNull()
     .default(false),
+  userRegistrationEnabled: integer("userRegistrationEnabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
   updatedAt: text("updatedAt")
     .notNull()
     .default(sql`(current_timestamp)`),

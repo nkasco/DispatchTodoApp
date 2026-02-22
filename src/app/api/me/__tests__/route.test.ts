@@ -24,6 +24,8 @@ const TEST_USER = {
   timeZone: null,
 };
 
+const EMPTY_TEMPLATE_PRESETS = { tasks: [], notes: [], dispatches: [] };
+
 function jsonReq(url: string, body: unknown) {
   return new Request(url, {
     method: "PUT",
@@ -51,6 +53,7 @@ describe("Me API", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.user.id).toBe(TEST_USER.id);
+    expect(data.templatePresets).toEqual(EMPTY_TEMPLATE_PRESETS);
   });
 
   it("PUT updates showAdminQuickAccess to false", async () => {
@@ -59,7 +62,12 @@ describe("Me API", () => {
       {},
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ showAdminQuickAccess: false, assistantEnabled: true, timeZone: null });
+    expect(await res.json()).toEqual({
+      showAdminQuickAccess: false,
+      assistantEnabled: true,
+      timeZone: null,
+      templatePresets: EMPTY_TEMPLATE_PRESETS,
+    });
 
     const [updated] = testDb.db
       .select({ showAdminQuickAccess: users.showAdminQuickAccess })
@@ -75,7 +83,12 @@ describe("Me API", () => {
       {},
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ showAdminQuickAccess: true, assistantEnabled: false, timeZone: null });
+    expect(await res.json()).toEqual({
+      showAdminQuickAccess: true,
+      assistantEnabled: false,
+      timeZone: null,
+      templatePresets: EMPTY_TEMPLATE_PRESETS,
+    });
 
     const [updated] = testDb.db
       .select({ assistantEnabled: users.assistantEnabled })
@@ -103,6 +116,7 @@ describe("Me API", () => {
       showAdminQuickAccess: true,
       assistantEnabled: true,
       timeZone: "America/Los_Angeles",
+      templatePresets: EMPTY_TEMPLATE_PRESETS,
     });
 
     const [updated] = testDb.db
@@ -116,6 +130,64 @@ describe("Me API", () => {
   it("PUT rejects invalid timezone", async () => {
     const res = await PUT(
       jsonReq("http://localhost/api/me", { timeZone: "Mars/OlympusMons" }),
+      {},
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("PUT updates template presets", async () => {
+    const templatePresets = {
+      tasks: [
+        {
+          id: "task-template-1",
+          name: "Morning plan",
+          title: "Plan {{date:YYYY-MM-DD}}",
+          description: "Focus on top priorities",
+          recurrenceType: "none",
+          recurrenceRule: null,
+        },
+      ],
+      notes: [
+        {
+          id: "note-template-1",
+          name: "Daily note",
+          content: "## Notes for {{date:YYYY-MM-DD}}",
+        },
+      ],
+      dispatches: [
+        {
+          id: "dispatch-template-1",
+          name: "EOD recap",
+          content: "Wins:\n-",
+        },
+      ],
+    };
+
+    const res = await PUT(
+      jsonReq("http://localhost/api/me", { templatePresets }),
+      {},
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      showAdminQuickAccess: true,
+      assistantEnabled: true,
+      timeZone: null,
+      templatePresets,
+    });
+
+    const [updated] = testDb.db
+      .select({ templatePresets: users.templatePresets })
+      .from(users)
+      .where(eq(users.id, TEST_USER.id))
+      .all();
+
+    expect(updated.templatePresets).toBe(JSON.stringify(templatePresets));
+  });
+
+  it("PUT rejects malformed template presets", async () => {
+    const res = await PUT(
+      jsonReq("http://localhost/api/me", { templatePresets: { tasks: [] } }),
       {},
     );
     expect(res.status).toBe(400);

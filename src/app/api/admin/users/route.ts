@@ -2,6 +2,9 @@ import bcrypt from "bcryptjs";
 import { db } from "@/db";
 import { accounts, users } from "@/db/schema";
 import { withAdminAuth, jsonResponse, errorResponse } from "@/lib/api";
+import { normalizeEmail, isValidEmail } from "@/lib/auth-email";
+import { USER_CREATION_DISABLED_MESSAGE } from "@/lib/security-messages";
+import { isUserRegistrationEnabled } from "@/lib/security-settings";
 import { eq } from "drizzle-orm";
 
 const VALID_ROLES = ["member", "admin"] as const;
@@ -52,6 +55,10 @@ export const GET = withAdminAuth(async () => {
 
 /** POST /api/admin/users — create a user account (admin only) */
 export const POST = withAdminAuth(async (req) => {
+  if (!(await isUserRegistrationEnabled())) {
+    return errorResponse(USER_CREATION_DISABLED_MESSAGE, 403);
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -81,9 +88,8 @@ export const POST = withAdminAuth(async (req) => {
     return errorResponse(`role must be one of: ${VALID_ROLES.join(", ")}`, 400);
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(normalizedEmail)) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!isValidEmail(normalizedEmail)) {
     return errorResponse("Invalid email format", 400);
   }
 
@@ -120,4 +126,3 @@ export const POST = withAdminAuth(async (req) => {
     201,
   );
 });
-

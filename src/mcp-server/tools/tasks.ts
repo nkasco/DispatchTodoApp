@@ -4,9 +4,20 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { db } from "@/db";
 import { projects, tasks } from "@/db/schema";
 import { requireUserId, textResult } from "@/mcp-server/tools/context";
+import {
+  parseTaskCustomRecurrenceRule,
+  serializeTaskCustomRecurrenceRule,
+} from "@/lib/task-recurrence";
 
 const TASK_STATUS = ["open", "in_progress", "done"] as const;
 const TASK_PRIORITY = ["low", "medium", "high"] as const;
+const TASK_RECURRENCE = ["none", "daily", "weekly", "monthly", "custom"] as const;
+const TASK_CUSTOM_RECURRENCE_UNIT = ["day", "week", "month"] as const;
+
+const customRecurrenceRuleSchema = z.object({
+  interval: z.number().int().min(1).max(365),
+  unit: z.enum(TASK_CUSTOM_RECURRENCE_UNIT),
+});
 
 export function registerTaskTools(server: McpServer) {
   server.registerTool(
@@ -49,6 +60,8 @@ export function registerTaskTools(server: McpServer) {
         priority: z.enum(TASK_PRIORITY).optional(),
         dueDate: z.string().optional(),
         projectId: z.string().nullable().optional(),
+        recurrenceType: z.enum(TASK_RECURRENCE).optional(),
+        recurrenceRule: customRecurrenceRuleSchema.nullable().optional(),
       },
     },
     async (args, extra) => {
@@ -68,6 +81,20 @@ export function registerTaskTools(server: McpServer) {
         if (!project) throw new Error("projectId does not match an active project for this user.");
       }
 
+      const recurrenceType = args.recurrenceType ?? "none";
+      let recurrenceRule: string | null = null;
+      if (recurrenceType === "custom") {
+        const parsed = parseTaskCustomRecurrenceRule(args.recurrenceRule);
+        if (!parsed) {
+          throw new Error(
+            "Custom recurrence requires recurrenceRule with interval (1-365) and unit (day|week|month).",
+          );
+        }
+        recurrenceRule = serializeTaskCustomRecurrenceRule(parsed);
+      } else if (args.recurrenceRule !== undefined && args.recurrenceRule !== null) {
+        throw new Error("recurrenceRule can only be set when recurrenceType is custom.");
+      }
+
       const now = new Date().toISOString();
       const [task] = await db
         .insert(tasks)
@@ -79,6 +106,8 @@ export function registerTaskTools(server: McpServer) {
           priority: args.priority ?? "medium",
           dueDate: args.dueDate,
           projectId: args.projectId ?? null,
+          recurrenceType,
+          recurrenceRule,
           createdAt: now,
           updatedAt: now,
         })
@@ -100,12 +129,18 @@ export function registerTaskTools(server: McpServer) {
         priority: z.enum(TASK_PRIORITY).optional(),
         dueDate: z.string().nullable().optional(),
         projectId: z.string().nullable().optional(),
+        recurrenceType: z.enum(TASK_RECURRENCE).optional(),
+        recurrenceRule: customRecurrenceRuleSchema.nullable().optional(),
       },
     },
     async (args, extra) => {
       const userId = requireUserId(extra);
       const [existing] = await db
-        .select({ id: tasks.id })
+        .select({
+          id: tasks.id,
+          recurrenceType: tasks.recurrenceType,
+          recurrenceRule: tasks.recurrenceRule,
+        })
         .from(tasks)
         .where(and(eq(tasks.id, args.id), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
         .limit(1);
@@ -127,6 +162,38 @@ export function registerTaskTools(server: McpServer) {
         if (!project) throw new Error("projectId does not match an active project for this user.");
       }
 
+      const hasRecurrenceType = Object.prototype.hasOwnProperty.call(args, "recurrenceType");
+      const hasRecurrenceRule = Object.prototype.hasOwnProperty.call(args, "recurrenceRule");
+      const nextRecurrenceType = hasRecurrenceType
+        ? args.recurrenceType!
+        : existing.recurrenceType;
+      let nextRecurrenceRule = existing.recurrenceRule;
+
+      if (hasRecurrenceRule) {
+        if (args.recurrenceRule === null) {
+          nextRecurrenceRule = null;
+        } else {
+          const parsed = parseTaskCustomRecurrenceRule(args.recurrenceRule);
+          if (!parsed) {
+            throw new Error("recurrenceRule must include interval (1-365) and unit (day|week|month).");
+          }
+          nextRecurrenceRule = serializeTaskCustomRecurrenceRule(parsed);
+        }
+      }
+
+      if (nextRecurrenceType === "custom") {
+        if (!nextRecurrenceRule) {
+          throw new Error("recurrenceRule is required when recurrenceType is custom.");
+        }
+      } else {
+        if (hasRecurrenceRule && args.recurrenceRule !== null && args.recurrenceRule !== undefined) {
+          throw new Error("recurrenceRule can only be set when recurrenceType is custom.");
+        }
+        if (hasRecurrenceType) {
+          nextRecurrenceRule = null;
+        }
+      }
+
       const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (args.title !== undefined) updates.title = args.title.trim();
       if (args.description !== undefined) updates.description = args.description;
@@ -134,6 +201,8 @@ export function registerTaskTools(server: McpServer) {
       if (args.priority !== undefined) updates.priority = args.priority;
       if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
       if (args.projectId !== undefined) updates.projectId = args.projectId;
+      if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
+      if (hasRecurrenceRule || hasRecurrenceType) updates.recurrenceRule = nextRecurrenceRule;
 
       const [updated] = await db
         .update(tasks)

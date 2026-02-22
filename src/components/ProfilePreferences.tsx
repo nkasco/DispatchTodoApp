@@ -4,10 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useToast } from "@/components/ToastProvider";
-import { api, type AIConfig, type AIModelInfo, type AIProvider } from "@/lib/client";
+import {
+  api,
+  type AIConfig,
+  type AIModelInfo,
+  type AIProvider,
+  type TemplatePresets,
+} from "@/lib/client";
 import { IconKey, IconMoon, IconSparkles, IconSun } from "@/components/icons";
 import { CustomSelect } from "@/components/CustomSelect";
 import { isValidTimeZone } from "@/lib/timezone";
+import { generateClientId } from "@/lib/id";
 
 const PROVIDER_OPTIONS: Array<{ value: AIProvider; label: string }> = [
   { value: "openai", label: "OpenAI" },
@@ -66,11 +73,13 @@ export function ProfilePreferences({
   showAdminQuickAccess = true,
   assistantEnabled = true,
   timeZone = null,
+  templatePresets = { tasks: [], notes: [], dispatches: [] },
 }: {
   isAdmin?: boolean;
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
   timeZone?: string | null;
+  templatePresets?: TemplatePresets;
 }) {
   const { theme, toggleTheme } = useTheme();
   const { update } = useSession();
@@ -107,6 +116,13 @@ export function ProfilePreferences({
   const [shareAiApiKeyWithUsers, setShareAiApiKeyWithUsers] = useState(false);
   const [loadingAiKeySharing, setLoadingAiKeySharing] = useState(false);
   const [savingAiKeySharing, setSavingAiKeySharing] = useState(false);
+  const [profileTemplates, setProfileTemplates] = useState<TemplatePresets>(templatePresets);
+  const [templateKind, setTemplateKind] = useState<"tasks" | "notes" | "dispatches">("tasks");
+  const [templateName, setTemplateName] = useState("");
+  const [taskTemplateTitle, setTaskTemplateTitle] = useState("");
+  const [taskTemplateDescription, setTaskTemplateDescription] = useState("");
+  const [textTemplateContent, setTextTemplateContent] = useState("");
+  const [savingTemplateLibrary, setSavingTemplateLibrary] = useState(false);
 
   const providerRequiresApiKey = useMemo(
     () => provider === "openai" || provider === "anthropic" || provider === "google",
@@ -130,10 +146,20 @@ export function ProfilePreferences({
 
     return timeZoneOptions.filter((option) => option.label.toLowerCase().includes(query));
   }, [timeZoneOptions, timezoneValue]);
+  const activeTemplateItems = profileTemplates[templateKind];
+  const templateKindOptions = [
+    { value: "tasks", label: "Tasks" },
+    { value: "notes", label: "Notes" },
+    { value: "dispatches", label: "Dispatch" },
+  ] as const;
 
   useEffect(() => {
     setTimezoneValue(timeZone ?? "");
   }, [timeZone]);
+
+  useEffect(() => {
+    setProfileTemplates(templatePresets);
+  }, [templatePresets]);
 
   useEffect(() => {
     try {
@@ -444,6 +470,123 @@ export function ProfilePreferences({
     }
   }
 
+  function resetTemplateDraft() {
+    setTemplateName("");
+    setTaskTemplateTitle("");
+    setTaskTemplateDescription("");
+    setTextTemplateContent("");
+  }
+
+  async function persistTemplateLibrary(nextTemplates: TemplatePresets) {
+    setSavingTemplateLibrary(true);
+    try {
+      const updated = await api.me.updatePreferences({ templatePresets: nextTemplates });
+      setProfileTemplates(updated.templatePresets);
+      toast.success("Template library updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update template library");
+    } finally {
+      setSavingTemplateLibrary(false);
+    }
+  }
+
+  async function handleAddTemplate() {
+    const trimmedName = templateName.trim();
+    if (!trimmedName) {
+      toast.error("Template name is required");
+      return;
+    }
+
+    if (templateKind === "tasks") {
+      const trimmedTitle = taskTemplateTitle.trim();
+      if (!trimmedTitle) {
+        toast.error("Task template title is required");
+        return;
+      }
+
+      const nextTemplates: TemplatePresets = {
+        ...profileTemplates,
+        tasks: [
+          ...profileTemplates.tasks,
+          {
+            id: generateClientId(),
+            name: trimmedName,
+            title: trimmedTitle,
+            description: taskTemplateDescription,
+            recurrenceType: "none",
+            recurrenceRule: null,
+          },
+        ],
+      };
+      await persistTemplateLibrary(nextTemplates);
+      resetTemplateDraft();
+      return;
+    }
+
+    const trimmedContent = textTemplateContent.trim();
+    if (!trimmedContent) {
+      toast.error("Template content is required");
+      return;
+    }
+
+    if (templateKind === "notes") {
+      const nextTemplates: TemplatePresets = {
+        ...profileTemplates,
+        notes: [
+          ...profileTemplates.notes,
+          {
+            id: generateClientId(),
+            name: trimmedName,
+            content: trimmedContent,
+          },
+        ],
+      };
+      await persistTemplateLibrary(nextTemplates);
+      resetTemplateDraft();
+      return;
+    }
+
+    const nextTemplates: TemplatePresets = {
+      ...profileTemplates,
+      dispatches: [
+        ...profileTemplates.dispatches,
+        {
+          id: generateClientId(),
+          name: trimmedName,
+          content: trimmedContent,
+        },
+      ],
+    };
+    await persistTemplateLibrary(nextTemplates);
+    resetTemplateDraft();
+  }
+
+  async function handleDeleteTemplate(id: string) {
+    if (templateKind === "tasks") {
+      const nextTemplates: TemplatePresets = {
+        ...profileTemplates,
+        tasks: profileTemplates.tasks.filter((entry) => entry.id !== id),
+      };
+      await persistTemplateLibrary(nextTemplates);
+      return;
+    }
+
+    if (templateKind === "notes") {
+      const nextTemplates: TemplatePresets = {
+        ...profileTemplates,
+        notes: profileTemplates.notes.filter((entry) => entry.id !== id),
+      };
+      await persistTemplateLibrary(nextTemplates);
+      return;
+    }
+
+    const nextTemplates: TemplatePresets = {
+      ...profileTemplates,
+      dispatches: profileTemplates.dispatches.filter((entry) => entry.id !== id),
+    };
+    await persistTemplateLibrary(nextTemplates);
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm space-y-4">
@@ -593,6 +736,118 @@ export function ProfilePreferences({
             </button>
           </div>
         )}
+      </div>
+
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Template Library</h2>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+            Save reusable templates for tasks, notes, and dispatch summaries.
+          </p>
+        </div>
+
+        <div className="inline-flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1">
+          {templateKindOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setTemplateKind(option.value)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                templateKind === option.value
+                  ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                  : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 space-y-3">
+          <label className="text-xs text-neutral-500 dark:text-neutral-400">
+            Template Name
+            <input
+              value={templateName}
+              onChange={(event) => setTemplateName(event.target.value)}
+              placeholder="Morning planning template"
+              className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+            />
+          </label>
+
+          {templateKind === "tasks" ? (
+            <div className="space-y-3">
+              <label className="text-xs text-neutral-500 dark:text-neutral-400">
+                Task Title Template
+                <input
+                  value={taskTemplateTitle}
+                  onChange={(event) => setTaskTemplateTitle(event.target.value)}
+                  placeholder="Plan {{date:YYYY-MM-DD}} priorities"
+                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+                />
+              </label>
+              <label className="text-xs text-neutral-500 dark:text-neutral-400">
+                Task Description Template
+                <textarea
+                  value={taskTemplateDescription}
+                  onChange={(event) => setTaskTemplateDescription(event.target.value)}
+                  placeholder="Top outcomes, blockers, and next actions..."
+                  rows={3}
+                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="text-xs text-neutral-500 dark:text-neutral-400">
+              Template Content
+              <textarea
+                value={textTemplateContent}
+                onChange={(event) => setTextTemplateContent(event.target.value)}
+                placeholder={templateKind === "notes" ? "## Notes for {{date:YYYY-MM-DD}}" : "Today: {{date:YYYY-MM-DD}} ..."}
+                rows={4}
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-800 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+              />
+            </label>
+          )}
+
+          <button
+            onClick={() => void handleAddTemplate()}
+            disabled={savingTemplateLibrary}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60 transition-all active:scale-95"
+          >
+            {savingTemplateLibrary ? "Saving..." : "Save Template"}
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+            Saved Templates
+          </p>
+          {activeTemplateItems.length === 0 ? (
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">No templates saved for this section yet.</p>
+          ) : (
+            activeTemplateItems.map((entry) => (
+              <div
+                key={entry.id}
+                className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 flex items-start justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 truncate">{entry.name}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                    {"title" in entry ? entry.title : entry.content}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteTemplate(entry.id)}
+                  disabled={savingTemplateLibrary}
+                  className="rounded-md border border-red-200 dark:border-red-900/50 px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-all active:scale-95"
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm space-y-4">

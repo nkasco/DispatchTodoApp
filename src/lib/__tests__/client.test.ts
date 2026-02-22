@@ -136,6 +136,20 @@ describe("api.tasks", () => {
         dueDate: "2025-01-01",
       });
     });
+
+    it("includes recurrence fields", async () => {
+      mockFetch.mockResolvedValueOnce(jsonOk({}));
+
+      await api.tasks.create({
+        title: "Recurring task",
+        recurrenceType: "custom",
+        recurrenceRule: { interval: 3, unit: "week" },
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.recurrenceType).toBe("custom");
+      expect(body.recurrenceRule).toEqual({ interval: 3, unit: "week" });
+    });
   });
 
   describe("update", () => {
@@ -157,6 +171,19 @@ describe("api.tasks", () => {
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.dueDate).toBeNull();
+    });
+
+    it("sends recurrence updates", async () => {
+      mockFetch.mockResolvedValueOnce(jsonOk({}));
+
+      await api.tasks.update("abc", {
+        recurrenceType: "monthly",
+        recurrenceRule: null,
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.recurrenceType).toBe("monthly");
+      expect(body.recurrenceRule).toBeNull();
     });
   });
 
@@ -587,6 +614,58 @@ describe("api.search", () => {
     expect(url).toContain("/api/search");
     expect(url).toContain("q=dashboard");
     expect(result).toEqual({ tasks: [], notes: [], dispatches: [] });
+  });
+});
+
+// ---- Me ----
+
+describe("api.me", () => {
+  it("fetches preferences from /api/me", async () => {
+    const payload = {
+      user: { id: "user-1" },
+      showAdminQuickAccess: true,
+      assistantEnabled: true,
+      timeZone: "America/New_York",
+      templatePresets: { tasks: [], notes: [], dispatches: [] },
+    };
+    mockFetch.mockResolvedValueOnce(jsonOk(payload));
+
+    const result = await api.me.getPreferences();
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/me", expect.anything());
+    expect(result).toEqual(payload);
+  });
+
+  it("updates template presets through /api/me", async () => {
+    const templatePresets = {
+      tasks: [
+        {
+          id: "task-template-1",
+          name: "Morning routine",
+          title: "Plan {{date:YYYY-MM-DD}}",
+          description: "",
+          recurrenceType: "none",
+          recurrenceRule: null,
+        },
+      ],
+      notes: [],
+      dispatches: [],
+    };
+
+    mockFetch.mockResolvedValueOnce(jsonOk({
+      showAdminQuickAccess: true,
+      assistantEnabled: true,
+      timeZone: null,
+      templatePresets,
+    }));
+
+    const result = await api.me.updatePreferences({ templatePresets });
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/me", expect.objectContaining({
+      method: "PUT",
+      body: JSON.stringify({ templatePresets }),
+    }));
+    expect(result.templatePresets).toEqual(templatePresets);
   });
 });
 

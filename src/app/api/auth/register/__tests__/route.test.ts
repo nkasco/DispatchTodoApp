@@ -1,12 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb } from "@/test/db";
-import { users } from "@/db/schema";
+import { securitySettings, users } from "@/db/schema";
+import { USER_CREATION_DISABLED_MESSAGE } from "@/lib/security-messages";
 
 let testDb: ReturnType<typeof createTestDb>;
 
 vi.mock("@/db", () => ({
   get db() {
     return testDb.db;
+  },
+  get sqlite() {
+    return testDb.sqlite;
   },
 }));
 
@@ -50,6 +54,18 @@ describe("POST /api/auth/register", () => {
     expect(user.email).toBe("nate@example.com");
     expect(user.name).toBe("Nate");
     expect(user.role).toBe("admin");
+  });
+
+  it("normalizes mixed-case and whitespace email before storing", async () => {
+    const res = await POST(jsonReq({
+      name: "Nate",
+      email: "  Nate@Example.COM  ",
+      password: "test12345",
+    }) as any);
+    expect(res.status).toBe(201);
+
+    const [user] = testDb.db.select().from(users).all();
+    expect(user.email).toBe("nate@example.com");
   });
 
   it("hashes the password (does not store plaintext)", async () => {
@@ -99,6 +115,24 @@ describe("POST /api/auth/register", () => {
 
   // --- Validation ---
 
+  it("blocks registration when user creation is disabled by admin setting", async () => {
+    testDb.db.insert(securitySettings).values({
+      id: 1,
+      databaseEncryptionEnabled: false,
+      shareAiApiKeyWithUsers: false,
+      userRegistrationEnabled: false,
+      updatedAt: new Date().toISOString(),
+    }).run();
+
+    const res = await POST(jsonReq({
+      email: "nate@example.com",
+      password: "test12345",
+    }) as any);
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe(USER_CREATION_DISABLED_MESSAGE);
+  });
+
   it("rejects missing email", async () => {
     const res = await POST(jsonReq({
       password: "test12345",
@@ -141,6 +175,21 @@ describe("POST /api/auth/register", () => {
 
     const res = await POST(jsonReq({
       email: "nate@example.com",
+      password: "different12345",
+    }) as any);
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain("already registered");
+  });
+
+  it("rejects duplicate registration when email casing or whitespace differs", async () => {
+    await POST(jsonReq({
+      email: "nate@example.com",
+      password: "test12345",
+    }) as any);
+
+    const res = await POST(jsonReq({
+      email: "  Nate@Example.COM ",
       password: "different12345",
     }) as any);
     expect(res.status).toBe(409);
