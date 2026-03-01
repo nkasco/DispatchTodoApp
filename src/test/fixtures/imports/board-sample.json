@@ -1,0 +1,39 @@
+{
+  "boards": [
+    {
+      "id": "board-1",
+      "name": "Website Relaunch",
+      "description": "Q2 launch board",
+      "lists": [
+        {
+          "id": "list-1",
+          "name": "Doing",
+          "cards": [
+            {
+              "id": "card-1",
+              "title": "Ship hero refresh",
+              "description": "Coordinate final copy updates",
+              "due": "2026-03-10",
+              "priority": "high",
+              "labels": ["marketing", "launch"],
+              "checklist": [{ "text": "Approve copy" }, { "text": "QA responsive layout" }],
+              "comments": [{ "text": "Keep the mobile layout minimal." }]
+            }
+          ]
+        },
+        {
+          "id": "list-2",
+          "name": "Done",
+          "cards": [
+            {
+              "id": "card-2",
+              "title": "Audit redirects",
+              "description": "Legacy URL map is complete",
+              "completed": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

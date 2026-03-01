@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, type ApiKey } from "@/lib/client";
-import { IconCode, IconCopy, IconKey, IconPlus, IconPuzzle, IconTrash } from "@/components/icons";
+import { IconCode, IconCopy, IconKey, IconPlus, IconTrash } from "@/components/icons";
+import { ExternalTaskConnectorsSection } from "@/components/ExternalTaskConnectorsSection";
 
 type Method = "GET" | "POST" | "PUT" | "DELETE";
 type SnippetMode = "curl" | "fetch" | "powershell";
@@ -10,7 +11,7 @@ const ACTIVE_API_KEY_STORAGE_KEY = "dispatch.active-api-key-id";
 
 type Endpoint = {
   id: string;
-  category: "tasks" | "projects" | "notes" | "dispatches";
+  category: "tasks" | "projects" | "notes" | "dispatches" | "exports";
   method: Method;
   path: string;
   summary: string;
@@ -39,6 +40,8 @@ const ENDPOINTS: Endpoint[] = [
   { id: "dispatches-create", category: "dispatches", method: "POST", path: "/api/dispatches", summary: "Create dispatch", body: `{ "date": "2026-02-07", "summary": "Plan work" }`, response: `{ "id": "disp_1", "date": "2026-02-07" }` },
   { id: "dispatches-complete", category: "dispatches", method: "POST", path: "/api/dispatches/{id}/complete", summary: "Complete dispatch", params: ["id"], response: `{ "rolledOver": 2, "nextDispatchId": "disp_2" }` },
   { id: "dispatches-unfinalize", category: "dispatches", method: "POST", path: "/api/dispatches/{id}/unfinalize", summary: "Unfinalize dispatch", params: ["id"], response: `{ "hasNextDispatch": true }` },
+
+  { id: "exports-tasks", category: "exports", method: "POST", path: "/api/exports/tasks", summary: "Preview or download task exports", body: `{ "format": "csv", "scope": "tasks_and_projects", "includeCompleted": false, "preview": true }`, response: `{ "fileName": "dispatch.csv.2026-03-01.csv", "counts": { "tasks": 12, "projects": 3 } }` },
 ];
 
 const CATEGORY_LABELS: Record<Endpoint["category"], string> = {
@@ -46,6 +49,7 @@ const CATEGORY_LABELS: Record<Endpoint["category"], string> = {
   projects: "Projects",
   notes: "Notes",
   dispatches: "Dispatches",
+  exports: "Exports",
 };
 
 const METHOD_STYLES: Record<Method, string> = {
@@ -575,21 +579,7 @@ export function IntegrationsPage() {
         </div>
       </section>
 
-      <section className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <IconPuzzle className="w-6 h-6 text-amber-500" />
-          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Connectors</h2>
-        </div>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-24 h-24 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
-            <IconPuzzle className="w-12 h-12 text-neutral-400 dark:text-neutral-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Coming Soon</h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-md">
-            Slack, GitHub, and Linear connectors are on the roadmap. Today, you can integrate directly using the API keys and snippets above.
-          </p>
-        </div>
-      </section>
+      <ExternalTaskConnectorsSection />
 
       {showNewKeyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewKeyModal(false)}>

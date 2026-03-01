@@ -674,6 +674,195 @@ describe("api.me", () => {
   });
 });
 
+// ---- Exports ----
+
+describe("api.exports", () => {
+  it("previews task exports", async () => {
+    mockFetch.mockResolvedValueOnce(jsonOk({
+      adapter: { format: "csv", label: "Structured CSV", description: "CSV", fileExtension: "csv" },
+      manifest: {
+        format: "csv",
+        formatVersion: "1.0",
+        generatedAt: "2026-03-01T00:00:00.000Z",
+        timeZone: "UTC",
+        filters: {
+          scope: "tasks_only",
+          includeCompleted: false,
+          startDate: null,
+          endDate: null,
+        },
+        counts: { tasks: 1, projects: 0 },
+      },
+      fileName: "dispatch-export.csv",
+      counts: { tasks: 1, projects: 0 },
+      omittedFields: [],
+      fallbackMappings: [],
+      warnings: [],
+    }));
+
+    const result = await api.exports.previewTasks({
+      format: "csv",
+      scope: "tasks_only",
+      includeCompleted: false,
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/exports/tasks", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({
+        format: "csv",
+        scope: "tasks_only",
+        includeCompleted: false,
+        preview: true,
+      }),
+    }));
+    expect(result.fileName).toBe("dispatch-export.csv");
+  });
+
+  it("downloads task exports and extracts filename metadata", async () => {
+    mockFetch.mockResolvedValueOnce(new Response("task export", {
+      status: 200,
+      headers: {
+        "Content-Disposition": 'attachment; filename="dispatch.csv"',
+        "X-Dispatch-Export-Format": "csv",
+      },
+    }));
+
+    const result = await api.exports.downloadTasks({
+      format: "csv",
+      scope: "tasks_only",
+      includeCompleted: false,
+    });
+
+    expect(result.fileName).toBe("dispatch.csv");
+    expect(result.content).toBe("task export");
+    expect(result.format).toBe("csv");
+  });
+});
+
+// ---- Integrations ----
+
+describe("api.integrations.connectors", () => {
+  it("lists connectors", async () => {
+    mockFetch.mockResolvedValueOnce(jsonOk({
+      connectors: [],
+      catalog: [],
+      audit: [],
+      conflicts: [],
+    }));
+
+    const result = await api.integrations.connectors.list();
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/integrations/connectors", expect.anything());
+    expect(result.connectors).toEqual([]);
+  });
+
+  it("creates a connector", async () => {
+    mockFetch.mockResolvedValueOnce(jsonOk({ id: "connector-1", name: "Remote" }, 201));
+
+    await api.integrations.connectors.create({
+      name: "Remote",
+      provider: "rest",
+      syncDirection: "push",
+      baseUrl: "https://tasks.example.com/api",
+      settings: { taskPath: "/tasks" },
+      authToken: "token",
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/integrations/connectors", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({
+        name: "Remote",
+        provider: "rest",
+        syncDirection: "push",
+        baseUrl: "https://tasks.example.com/api",
+        settings: { taskPath: "/tasks" },
+        authToken: "token",
+      }),
+    }));
+  });
+});
+
+// ---- Imports ----
+
+describe("api.imports", () => {
+  it("previews imports", async () => {
+    mockFetch.mockResolvedValueOnce(jsonOk({
+      sessionId: "import-preview-1",
+      format: "csv",
+      fileName: "tasks.csv",
+      counts: { tasks: 1, projects: 1, notes: 0, dispatches: 0, skipped: 0 },
+      warnings: [],
+      inferredMappings: ["Mapped title to \"Title\"."],
+      mappingSuggestions: null,
+      sample: {
+        tasks: [{ title: "Plan migration", status: "open", priority: "medium", dueDate: null, projectName: "Platform" }],
+        projects: [{ name: "Platform", status: "active" }],
+        notes: [],
+        dispatches: [],
+      },
+      guide: {
+        label: "Structured CSV / Spreadsheet",
+        description: "CSV import",
+        expectedStructure: "Columns",
+        sampleHint: "Use headers",
+        compatibility: {
+          exact: ["Task title"],
+          approximate: [],
+          unsupported: [],
+        },
+      },
+    }));
+
+    const payload = {
+      format: "csv" as const,
+      fileName: "tasks.csv",
+      contentBase64: "dGVzdA==",
+      options: { duplicateMode: "skip" as const },
+    };
+    const result = await api.imports.preview(payload);
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/imports/preview", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify(payload),
+    }));
+    expect(result.sessionId).toBe("import-preview-1");
+  });
+
+  it("commits imports", async () => {
+    mockFetch.mockResolvedValueOnce(jsonOk({
+      sessionId: "import-commit-1",
+      created: 2,
+      updated: 0,
+      skipped: 0,
+      warnings: [],
+      links: {
+        tasks: "/tasks",
+        notes: "/notes",
+        projects: "/projects",
+        dispatches: "/dispatch",
+      },
+      details: [
+        { entityType: "project", title: "Platform", action: "created" },
+        { entityType: "task", title: "Plan migration", action: "created" },
+      ],
+    }));
+
+    const payload = {
+      format: "csv" as const,
+      fileName: "tasks.csv",
+      contentBase64: "dGVzdA==",
+      previewSessionId: "import-preview-1",
+    };
+    const result = await api.imports.commit(payload);
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/imports", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify(payload),
+    }));
+    expect(result.created).toBe(2);
+  });
+});
+
 // ---- Error handling ----
 
 describe("error handling", () => {

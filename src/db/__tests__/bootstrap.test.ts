@@ -90,4 +90,53 @@ describe("ensureSchemaColumns", () => {
     expect(columns).toContain("shareAiApiKeyWithUsers");
     expect(columns).toContain("userRegistrationEnabled");
   });
+
+  it("creates integration connector tables when missing", () => {
+    const sqlite = createSqlite(`
+      CREATE TABLE "user" (
+        "id" text PRIMARY KEY NOT NULL
+      );
+      CREATE TABLE "project" (
+        "id" text PRIMARY KEY NOT NULL,
+        "userId" text
+      );
+      CREATE TABLE "task" (
+        "id" text PRIMARY KEY NOT NULL,
+        "userId" text
+      );
+    `);
+
+    ensureSchemaColumns(sqlite);
+
+    const tables = sqlite.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name in ('integration_connection', 'integration_project_mapping', 'integration_task_mapping', 'integration_outbox', 'integration_audit_log')",
+    ).all() as Array<{ name: string }>;
+
+    expect(tables.map((entry) => entry.name)).toEqual([
+      "integration_connection",
+      "integration_project_mapping",
+      "integration_task_mapping",
+      "integration_outbox",
+      "integration_audit_log",
+    ]);
+  });
+
+  it("creates import tracking tables when missing", () => {
+    const sqlite = createSqlite(`
+      CREATE TABLE "user" (
+        "id" text PRIMARY KEY NOT NULL
+      );
+    `);
+
+    ensureSchemaColumns(sqlite);
+
+    const tables = sqlite.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name in ('import_session', 'import_item_mapping')",
+    ).all() as Array<{ name: string }>;
+
+    expect(tables.map((entry) => entry.name)).toEqual([
+      "import_session",
+      "import_item_mapping",
+    ]);
+  });
 });

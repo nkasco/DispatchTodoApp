@@ -1,0 +1,3 @@
+Task Title,Details,State,Importance,Deadline,Board,Done,External ID
+Plan migration,Review source exports,Doing,High,2026-03-08,Platform,false,csv-1
+Archive docs,Legacy notes cleanup,Done,Low,2026-03-02,Ops,true,csv-2

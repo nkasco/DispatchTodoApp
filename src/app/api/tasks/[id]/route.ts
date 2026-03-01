@@ -10,6 +10,7 @@ import {
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
+import { enqueueTaskMutationForConnectors, processConnectorOutbox } from "@/lib/integrations/service";
 import { db } from "@/db";
 import { tasks, projects, recurrenceSeries } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -270,6 +271,17 @@ export const PUT = withAuth(async (req, session, ctx) => {
     }
   }
 
+  try {
+    await enqueueTaskMutationForConnectors({
+      userId: session.user.id,
+      taskId: updated.id,
+      action: "update",
+    });
+    await processConnectorOutbox({ userId: session.user.id, limit: 10 });
+  } catch (error) {
+    console.error("Failed to enqueue connector sync after task update:", error);
+  }
+
   return jsonResponse(updated);
 });
 
@@ -290,6 +302,17 @@ export const DELETE = withAuth(async (req, session, ctx) => {
     .update(tasks)
     .set({ deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
     .where(eq(tasks.id, id));
+
+  try {
+    await enqueueTaskMutationForConnectors({
+      userId: session.user.id,
+      taskId: id,
+      action: "delete",
+    });
+    await processConnectorOutbox({ userId: session.user.id, limit: 10 });
+  } catch (error) {
+    console.error("Failed to enqueue connector sync after task delete:", error);
+  }
 
   return jsonResponse({ deleted: true });
 });

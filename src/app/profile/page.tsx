@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { tasks, notes, projects, dispatches, accounts, users } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { ProfilePreferences } from "@/components/ProfilePreferences";
+import { ProfileExports } from "@/components/ProfileExports";
 import { parseStoredTemplatePresets } from "@/lib/template-presets";
 
 export default async function Profile() {
@@ -123,6 +124,23 @@ export default async function Profile() {
         timeZone={timeZone}
         templatePresets={templatePresets}
       />
+
+      <ProfileExports />
+
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-blue-950/20 dark:via-neutral-900 dark:to-cyan-950/10 p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Imports</h2>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          Migrate external exports into Dispatch with a preview-first wizard, field mapping, duplicate handling, and transactional commit safety.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/imports"
+            className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-all active:scale-95"
+          >
+            Open Import Wizard
+          </Link>
+        </div>
+      </section>
 
       {isAdmin && (
         <section className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 via-white to-yellow-50 dark:from-amber-950/30 dark:via-neutral-900 dark:to-yellow-950/20 p-6 shadow-sm">

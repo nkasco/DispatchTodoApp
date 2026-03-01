@@ -10,6 +10,7 @@ import {
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
+import { enqueueTaskMutationForConnectors, processConnectorOutbox } from "@/lib/integrations/service";
 import { db } from "@/db";
 import { tasks, projects } from "@/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
@@ -211,6 +212,17 @@ export const POST = withAuth(async (req, session) => {
       updatedAt: now,
     })
     .returning();
+
+  try {
+    await enqueueTaskMutationForConnectors({
+      userId: session.user.id,
+      taskId: task.id,
+      action: "create",
+    });
+    await processConnectorOutbox({ userId: session.user.id, limit: 10 });
+  } catch (error) {
+    console.error("Failed to enqueue connector sync after task create:", error);
+  }
 
   return jsonResponse(task, 201);
 });

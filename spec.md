@@ -24,7 +24,7 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 | Authentication | NextAuth.js v5-beta (OAuth2 + Credentials) |
 | AI             | Vercel AI SDK (`ai`, `@ai-sdk/*`) + MCP    |
 | Runtime        | Node.js                                    |
-| Testing        | Vitest 4.0                                 |
+| Testing        | Vitest 4.0 + Testing Library (jsdom)       |
 
 ## Authentication
 
@@ -57,6 +57,12 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 - **aiConfigs** (`ai_config`) — `id`, `userId`, `provider`, `apiKey` (encrypted), `baseUrl?`, `model`, `isActive`, `createdAt`, `updatedAt`.
 - **chatConversations** (`chat_conversations`) — `id`, `userId`, `title`, `createdAt`, `updatedAt`.
 - **chatMessages** (`chat_messages`) — `id`, `conversationId`, `role`, `content`, `model?`, `tokenCount?`, `createdAt`.
+- **integrationConnections** (`integration_connection`) — per-user connector records with provider type, encrypted auth, capability flags, webhook secret, sync direction, last sync state, and last error.
+- **integrationProjectMappings** / **integrationTaskMappings** — connector mapping tables linking Dispatch project/task ids to external ids with sync timestamps and conflict markers.
+- **integrationOutbox** (`integration_outbox`) — durable outbound connector queue with idempotency keys, retry status, backoff timing, and delivery state.
+- **integrationAuditLogs** (`integration_audit_log`) — per-user sync audit trail for connector test runs, deliveries, retries, failures, and webhook reconciliation.
+- **importSessions** (`import_session`) — per-user import manifests containing source format, file name, fingerprint, duplicate mode, preview/commit status, warning counts, created/updated/skipped totals, and last failure message.
+- **importItemMappings** (`import_item_mapping`) — per-user import idempotency table linking stable external/source keys to Dispatch entity ids so repeated imports can skip, merge, or create copies safely.
 
 ### Soft-Delete & Recycle Bin
 - Tasks, notes, and projects use soft-delete: `DELETE` sets a `deletedAt` timestamp instead of removing the row.
@@ -74,6 +80,9 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 - Pagination via `?page=&limit=` query params on list endpoints, parsed by `src/lib/pagination.ts`.
 - Global search via `GET /api/search?q=` across tasks, notes, dispatches, and projects.
 - Recycle bin via `GET /api/recycle-bin` (list deleted items) and `POST /api/recycle-bin` (restore or permanently delete).
+- Task exports via `POST /api/exports/tasks`, supporting preview responses and downloadable files.
+- Connector management via `/api/integrations/connectors*` for CRUD, test, manual sync, and webhook intake.
+- Import preview/commit via `/api/imports/preview` and `/api/imports`, supporting guided dry runs, duplicate handling, import session logging, and transactional writes.
 
 ### Resource Endpoints
 | Resource    | List/Create            | Get/Update/Delete           | Extras                                                    |
@@ -92,6 +101,9 @@ Dispatch is a personal, locally-hosted web application for managing tasks, notes
 | AI Chat     | `/api/ai/chat`         | --                          | Streaming assistant endpoint                              |
 | AI Conversations | `/api/ai/conversations` | `/api/ai/conversations/[id]` | Create/list/get/update/delete conversations              |
 | MCP Health  | `/api/ai/mcp/health`   | --                          | MCP server reachability indicator                         |
+| Exports     | `/api/exports/tasks`   | --                          | Preview/download CSV, plain-text, or ICS task exports     |
+| Connectors  | `/api/integrations/connectors` | `/api/integrations/connectors/[id]` | `.../test`, `.../sync`, `.../webhook`           |
+| Imports     | `/api/imports`, `/api/imports/preview` | --          | Dry-run preview, transactional commit, duplicate handling |
 | Auth        | `/api/auth/[...nextauth]` | --                       | NextAuth.js catch-all                                     |
 | Register    | `/api/auth/register`   | --                          | POST email/password registration                          |
 
@@ -121,8 +133,11 @@ src/
     inbox/page.tsx                  # Priority inbox
     recycle-bin/page.tsx            # Recycle bin
     profile/page.tsx                # User profile (server component with DB queries)
+    imports/page.tsx                # Guided import wizard
     integrations/page.tsx           # API documentation + key management
     api/                            # All REST API route handlers (see endpoints above)
+      imports/route.ts              # Import commit endpoint
+      imports/preview/route.ts      # Import dry-run preview endpoint
       admin/users/route.ts          # Admin user list/create
       admin/users/[id]/route.ts     # Admin user mutate/delete
       admin/security/route.ts       # Admin security/encryption controls
@@ -140,9 +155,12 @@ src/
     NoteEditor.tsx                  # Markdown note editor with formatting toolbar
     RecycleBinPage.tsx              # Recycle bin: restore, permanent delete, retention timers
     ProfilePreferences.tsx          # Theme toggle, API key management, sign-out
+    ProfileExports.tsx              # Export controls + preview for CSV/plain-text/ICS task exports
+    ImportsPage.tsx                 # Guided import wizard with format guide, mapping, preview, and result states
     AssistantPage.tsx               # Personal Assistant chat UI + conversation manager
     AdminSettingsPanel.tsx          # Admin-only control plane in Profile
     IntegrationsPage.tsx            # API docs with curl/fetch/PowerShell code generation
+    ExternalTaskConnectorsSection.tsx # Connector management, sync controls, audit log, conflicts
     SearchOverlay.tsx               # Global search overlay (Ctrl+K) with debounced cross-entity results
     KeyboardShortcuts.tsx           # Global keyboard shortcut handler
     ShortcutHelpOverlay.tsx         # Shortcut reference modal (? key)
@@ -158,6 +176,9 @@ src/
     client.ts                       # Typed API client with all resource methods + type exports
     ai.ts                           # AI config/model/provider helpers + model factory
     ai-encryption.ts                # AES-GCM API key encryption helpers
+    exports/                        # Export adapter registry + CSV/plain-text/ICS serializers
+    imports/                        # Import adapter registry + CSV/board/ZIP/ICS/plain-text/round-trip parsers
+    integrations/                   # Connector adapters, encryption wrappers, outbox/audit service
     projects.ts                     # PROJECT_COLORS config, PROJECT_COLOR_OPTIONS, PROJECT_STATUS_OPTIONS
     pagination.ts                   # parsePagination, paginatedResponse helpers
   mcp-server/
@@ -171,6 +192,7 @@ src/
   test/
     db.ts                           # createTestDb() - in-memory SQLite factory for tests
     setup.ts                        # mockSession(), NextResponse mock, global test setup
+    fixtures/imports/               # Sample import fixtures and migration regression references
 ```
 
 ## UI Patterns
@@ -179,6 +201,10 @@ src/
 - `AppShell` wraps all authenticated pages: renders `Sidebar` (left) + main content area.
 - Sidebar is collapsible with sections: Overview (Dashboard, Dispatch), Workspace (Inbox, Tasks, Notes), Projects (dynamic list), Account (Integrations, Shortcuts, Profile).
 - Dark mode toggle in sidebar footer. Theme persisted to localStorage via `ThemeProvider`.
+- `/profile` includes an Exports panel with format descriptions, scope/date filters, preview summaries, and downloadable task exports.
+- `/profile` and the sidebar both expose Imports entry points that route to `/imports`.
+- `/imports` is a preview-first migration surface with source-format cards, per-format compatibility guidance, upload options, CSV mapping controls, dry-run counts/warnings, and a result state that calls out attachment handling plus transactional rollback safety.
+- `/integrations` includes External Task Connectors with encrypted credentials, manual re-sync controls, webhook URLs, conflict markers, and a sync audit log.
 
 ### Toast System
 - `ToastProvider` at root provides `toast.success()`, `toast.error()`, `toast.info()`, and `toast.undo()`.
@@ -217,11 +243,35 @@ src/
 - No deployment target — this is a personal localhost application.
 - App version exposed via `NEXT_PUBLIC_APP_VERSION` from package.json.
 
+## Exports & Connector Interop
+
+- Export adapters live under `src/lib/exports/` and currently support structured CSV, plain-text task files, and iCalendar (`.ics`).
+- Export previews surface counts, omitted fields, fallback mappings, and warnings before file generation. Download responses include traceability headers for export format, generation time, count, and manifest metadata.
+- Export serialization is timezone-aware using the user's profile timezone. Date-range filtering prefers due date and falls back to created date when a task has no due date.
+- Connector adapters live under `src/lib/integrations/connectors/` and currently support a generic REST/OAuth task API, CalDAV task collections, and a local automation URI/desktop bridge mode.
+- Task create/update/delete mutations enqueue durable outbox jobs. Connector failures never block local task edits; they are retried with backoff and recorded in the audit log.
+- Webhook intake supports near-real-time external change detection. Conflict handling defaults to last-write-wins when the external timestamp is newer, while newer local edits leave an explicit conflict marker for review.
+- Plain-text task systems remain export-only in v1 connector scope. Local automation is push-oriented with manual or bridge-based reconciliation rather than full bidirectional sync.
+
+## Imports & Migration Onboarding
+
+- Import adapters live under `src/lib/imports/` and normalize every source into a canonical batch containing tasks, projects, notes, dispatch summaries, warnings, skipped rows, mapping suggestions, and source metadata before preview or commit.
+- Supported source families are structured CSV/spreadsheets, board-style JSON, workspace ZIP bundles, iCalendar (`.ics`), plain-text task files, and Dispatch round-trip restores from phase 18 exports.
+- Preview and commit honor the authenticated user's profile timezone. Date-only values stay date-only, while ambiguous datetimes collapse into the user's effective timezone with explicit warnings where fidelity is reduced.
+- Duplicate handling is explicit per run: `skip`, `merge`, or `create_copy`. File fingerprints and stable source ids are stored in `import_session` and `import_item_mapping` so repeat imports remain traceable and safe.
+- Import commits are transactional. If the write stage fails, Dispatch records the failed session and rolls back local writes instead of leaving partial tasks, projects, notes, or dispatches behind.
+- Conversion rules intentionally preserve foreign concepts as best-effort content: sections/lists become projects or task status, checklists become markdown checklist blocks, comments/history become appended markdown sections, and attachments/assets become manifest references when direct import is unavailable.
+- Guardrails cap file size, CSV row count, and ZIP archive entries with clear preview-time errors designed for local-machine operation rather than silent truncation.
+- Phase 18 export files are a first-class import source in phase 19. Dispatch CSV, plain-text, and ICS exports round-trip through the `dispatch_roundtrip` adapter with source-id preservation and duplicate detection tuned for restore workflows.
+- The UI and docs both expose a compatibility matrix that distinguishes fields preserved exactly, approximated conversions, and intentionally unsupported data for each format family.
+
 ## Testing
 
 - Vitest for unit and integration tests, colocated with source under `__tests__/` directories.
+- React Testing Library + jsdom cover import wizard UI flows, mapping controls, warnings, success states, and recoverable failure states.
 - Test helpers provide in-memory SQLite database factory (`src/test/db.ts`) and auth mocking (`src/test/setup.ts`).
 - Tests mock `@/auth` for session control and `@/db` with an in-memory SQLite instance.
+- Import regression coverage includes fixture-backed adapter tests, preview/commit API integration tests, rollback checks, and curated local sample fixtures under `src/test/fixtures/imports/`.
 - When appropriate, test with the chrome-devtools MCP for visual/interactive verification. Check to see if a dev server is already running before trying to start a new one.
 
 ## Environment Variables (.env.local)

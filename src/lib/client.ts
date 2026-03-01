@@ -8,6 +8,13 @@ export type TaskCustomRecurrenceUnit = "day" | "week" | "month";
 export type ProjectStatus = "active" | "paused" | "completed";
 export type UserRole = "member" | "admin";
 export type AIProvider = "openai" | "anthropic" | "google" | "ollama" | "lmstudio" | "custom";
+export type ExportFormat = "csv" | "plain_text" | "ics";
+export type ExportScope = "tasks_only" | "tasks_and_projects";
+export type ConnectorProvider = "rest" | "caldav" | "local_uri";
+export type ConnectorStatus = "active" | "disabled" | "error";
+export type ConnectorSyncDirection = "push" | "pull" | "bidirectional";
+export type ImportSourceFormat = "csv" | "board_json" | "workspace_zip" | "ics" | "plain_text" | "dispatch_roundtrip";
+export type ImportDuplicateMode = "skip" | "create_copy" | "merge";
 
 export interface TaskCustomRecurrenceRule {
   interval: number;
@@ -189,11 +196,216 @@ export interface AdminVersionStatus {
   error: string | null;
 }
 
+export interface ExportPreview {
+  adapter: {
+    format: ExportFormat;
+    label: string;
+    description: string;
+    fileExtension: string;
+  };
+  manifest: {
+    format: ExportFormat;
+    formatVersion: string;
+    generatedAt: string;
+    timeZone: string;
+    filters: {
+      scope: ExportScope;
+      includeCompleted: boolean;
+      startDate: string | null;
+      endDate: string | null;
+    };
+    counts: {
+      tasks: number;
+      projects: number;
+    };
+  };
+  fileName: string;
+  counts: {
+    tasks: number;
+    projects: number;
+  };
+  omittedFields: string[];
+  fallbackMappings: string[];
+  warnings: string[];
+}
+
+export interface ConnectorCapabilityFlags {
+  pushTasks: boolean;
+  pullTasks: boolean;
+  biDirectional: boolean;
+  pushProjects: boolean;
+  webhooks: boolean;
+  exportOnly: boolean;
+  localOnly: boolean;
+  requiresDesktopBridge: boolean;
+}
+
+export interface ConnectorRecord {
+  id: string;
+  userId: string;
+  name: string;
+  provider: ConnectorProvider;
+  status: ConnectorStatus;
+  syncDirection: ConnectorSyncDirection;
+  baseUrl: string | null;
+  capabilityFlags: ConnectorCapabilityFlags;
+  settings: Record<string, unknown>;
+  auth: {
+    hasToken: boolean;
+    maskedToken: string | null;
+    username?: string | null;
+  };
+  webhookSecret: string | null;
+  webhookUrl: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  pendingCount: number;
+  failedCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConnectorAuditEntry {
+  id: string;
+  connectionId: string;
+  level: "info" | "warning" | "error";
+  eventType: string;
+  message: string;
+  details: string | null;
+  createdAt: string;
+}
+
+export interface ConnectorConflictEntry {
+  connectionId: string;
+  taskId: string;
+  conflictState: "last_write_wins" | "needs_review";
+  conflictMessage: string | null;
+  externalTaskId: string;
+  updatedAt: string;
+  taskTitle: string;
+}
+
+export interface ConnectorCatalogEntry {
+  provider: ConnectorProvider;
+  label: string;
+  description: string;
+  capabilityFlags: ConnectorCapabilityFlags;
+}
+
+export interface ConnectorSyncResult {
+  processed: number;
+  delivered: number;
+  failed: number;
+  pending: number;
+  lastSyncedAt: string | null;
+}
+
+export interface ImportFieldMapping {
+  title?: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+  project?: string;
+  completed?: string;
+  notes?: string;
+  sourceId?: string;
+  dispatchDate?: string;
+}
+
+export interface ImportOptions {
+  duplicateMode: ImportDuplicateMode;
+  includeCompleted: boolean;
+  includeArchived: boolean;
+  includeComments: boolean;
+  includeAttachments: boolean;
+}
+
+export interface ImportPreviewResponse {
+  sessionId: string;
+  format: ImportSourceFormat;
+  fileName: string;
+  counts: {
+    tasks: number;
+    projects: number;
+    notes: number;
+    dispatches: number;
+    skipped: number;
+  };
+  warnings: string[];
+  inferredMappings: string[];
+  mappingSuggestions: {
+    availableColumns: string[];
+    fieldMapping: ImportFieldMapping;
+    requiredFields: string[];
+  } | null;
+  sample: {
+    tasks: Array<{
+      title: string;
+      status: TaskStatus;
+      priority: TaskPriority;
+      dueDate: string | null;
+      projectName: string | null;
+    }>;
+    projects: Array<{ name: string; status: ProjectStatus }>;
+    notes: Array<{ title: string }>;
+    dispatches: Array<{ date: string }>;
+  };
+  guide: {
+    label: string;
+    description: string;
+    expectedStructure: string;
+    sampleHint: string;
+    compatibility: {
+      exact: string[];
+      approximate: string[];
+      unsupported: string[];
+    };
+  };
+}
+
+export interface ImportCommitResponse {
+  sessionId: string;
+  created: number;
+  updated: number;
+  skipped: number;
+  warnings: string[];
+  links: {
+    tasks: string;
+    notes: string;
+    projects: string;
+    dispatches: string;
+  };
+  details: Array<{
+    entityType: "task" | "project" | "note" | "dispatch";
+    title: string;
+    action: "created" | "updated" | "skipped";
+  }>;
+}
+
 interface MePreferences {
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
   timeZone?: string | null;
   templatePresets?: TemplatePresets;
+}
+
+interface ExportRequestParams {
+  format: ExportFormat;
+  scope: ExportScope;
+  includeCompleted: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+interface ImportRequestParams {
+  format: ImportSourceFormat;
+  fileName: string;
+  mimeType?: string | null;
+  contentBase64: string;
+  options?: Partial<ImportOptions>;
+  fieldMapping?: ImportFieldMapping;
+  previewSessionId?: string | null;
 }
 
 export interface MePreferencesPayload {
@@ -356,6 +568,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   throw new ApiError("Request failed", 500);
+}
+
+function parseContentDispositionFileName(header: string | null): string | null {
+  if (!header) return null;
+  const match = header.match(/filename="([^"]+)"/i);
+  return match?.[1] ?? null;
 }
 
 function qs(params: Record<string, string | undefined>): string {
@@ -666,6 +884,119 @@ export const api = {
 
     mcpHealth: () =>
       request<{ reachable: boolean; url: string; error?: string }>("/ai/mcp/health"),
+  },
+
+  exports: {
+    previewTasks: (data: ExportRequestParams) =>
+      request<ExportPreview>("/exports/tasks", {
+        method: "POST",
+        body: JSON.stringify({ ...data, preview: true }),
+      }),
+
+    downloadTasks: async (data: ExportRequestParams) => {
+      const res = await fetch("/api/exports/tasks", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        try {
+          const parsed = JSON.parse(text) as { error?: string };
+          throw new ApiError(parsed.error || "Export failed", res.status);
+        } catch {
+          throw new ApiError(text || "Export failed", res.status);
+        }
+      }
+
+      return {
+        content: await res.text(),
+        fileName: parseContentDispositionFileName(res.headers.get("Content-Disposition")) ?? "dispatch-export.txt",
+        manifest: res.headers.get("X-Dispatch-Export-Manifest"),
+        format: res.headers.get("X-Dispatch-Export-Format") as ExportFormat | null,
+      };
+    },
+  },
+
+  integrations: {
+    connectors: {
+      list: () =>
+        request<{
+          connectors: ConnectorRecord[];
+          catalog: ConnectorCatalogEntry[];
+          audit: ConnectorAuditEntry[];
+          conflicts: ConnectorConflictEntry[];
+        }>("/integrations/connectors"),
+
+      create: (data: {
+        name: string;
+        provider: ConnectorProvider;
+        syncDirection: ConnectorSyncDirection;
+        baseUrl?: string | null;
+        settings?: Record<string, unknown>;
+        authToken?: string | null;
+        username?: string | null;
+        password?: string | null;
+      }) =>
+        request<ConnectorRecord>("/integrations/connectors", {
+          method: "POST",
+          body: JSON.stringify(data),
+        }),
+
+      get: (id: string) =>
+        request<ConnectorRecord>(`/integrations/connectors/${id}`),
+
+      update: (
+        id: string,
+        data: {
+          name?: string;
+          status?: ConnectorStatus;
+          syncDirection?: ConnectorSyncDirection;
+          baseUrl?: string | null;
+          settings?: Record<string, unknown>;
+          authToken?: string | null;
+          username?: string | null;
+          password?: string | null;
+        },
+      ) =>
+        request<ConnectorRecord>(`/integrations/connectors/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        }),
+
+      delete: (id: string) =>
+        request<{ deleted: true }>(`/integrations/connectors/${id}`, {
+          method: "DELETE",
+        }),
+
+      test: (id: string) =>
+        request<{ ok: boolean; message: string }>(`/integrations/connectors/${id}/test`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        }),
+
+      sync: (id: string) =>
+        request<ConnectorSyncResult>(`/integrations/connectors/${id}/sync`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        }),
+    },
+  },
+
+  imports: {
+    preview: (data: ImportRequestParams) =>
+      request<ImportPreviewResponse>("/imports/preview", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    commit: (data: ImportRequestParams) =>
+      request<ImportCommitResponse>("/imports", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
   },
 
   me: {

@@ -1,0 +1,5 @@
+- [ ] Draft onboarding page !! due:2026-03-11 @platform #dispatch:pt-1
+  Keep the first-run copy tight and clear.
+
+- [x] Capture launch retrospective due:2026-03-01 @ops #dispatch:pt-2
+  Include blockers and decisions.
