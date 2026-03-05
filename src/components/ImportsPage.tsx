@@ -139,7 +139,12 @@ const FORMAT_ICONS = {
   dispatch_roundtrip: IconInbox,
 } as const;
 
-export function ImportsPage() {
+interface ImportsPageProps {
+  backHref?: string;
+  backLabel?: string;
+}
+
+export function ImportsPage({ backHref = "/profile", backLabel = "Back to Profile" }: ImportsPageProps = {}) {
   const { toast } = useToast();
   const [step, setStep] = useState<WizardStep>("format");
   const [format, setFormat] = useState<ImportSourceFormat>("csv");
@@ -321,10 +326,10 @@ export function ImportsPage() {
             </p>
           </div>
           <Link
-            href="/profile"
+            href={backHref}
             className="inline-flex items-center rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-white/80 dark:hover:bg-neutral-800 transition-colors"
           >
-            Back to Profile
+            {backLabel}
           </Link>
         </div>
 

@@ -5,7 +5,6 @@ import { db } from "@/db";
 import { tasks, notes, projects, dispatches, accounts, users } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { ProfilePreferences } from "@/components/ProfilePreferences";
-import { ProfileExports } from "@/components/ProfileExports";
 import { parseStoredTemplatePresets } from "@/lib/template-presets";
 
 export default async function Profile() {
@@ -67,38 +66,48 @@ export default async function Profile() {
       </div>
 
       <section className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          {user.image ? (
-            <img
-              src={user.image}
-              alt=""
-              className="w-16 h-16 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
-              <svg className="w-9 h-9 text-neutral-400 dark:text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.25a7.5 7.5 0 0 1 15 0" />
-              </svg>
-            </div>
-          )}
-          <div>
-            <p className="text-lg font-semibold dark:text-white">
-              {user.name ?? "Unnamed User"}
-            </p>
-            {isAdmin && (
-              <span className="inline-flex mt-1 rounded-full border border-amber-300/80 dark:border-amber-700/70 bg-amber-100/90 dark:bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:text-amber-300">
-                Administrator
-              </span>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {user.image ? (
+              <img
+                src={user.image}
+                alt=""
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
+                <svg className="w-9 h-9 text-neutral-400 dark:text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.25a7.5 7.5 0 0 1 15 0" />
+                </svg>
+              </div>
             )}
-            {user.email && (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                {user.email}
+            <div>
+              <p className="text-lg font-semibold dark:text-white">
+                {user.name ?? "Unnamed User"}
               </p>
-            )}
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-              {providers.length > 0 ? `Connected via ${providers.join(", ")}` : "No linked providers"}
-            </p>
+              {isAdmin && (
+                <span className="inline-flex mt-1 rounded-full border border-amber-300/80 dark:border-amber-700/70 bg-amber-100/90 dark:bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:text-amber-300">
+                  Administrator
+                </span>
+              )}
+              {user.email && (
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  {user.email}
+                </p>
+              )}
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                {providers.length > 0 ? `Connected via ${providers.join(", ")}` : "No linked providers"}
+              </p>
+            </div>
           </div>
+          {isAdmin && (
+            <Link
+              href="/administration"
+              className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-all active:scale-95"
+            >
+              Open Administration
+            </Link>
+          )}
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs text-neutral-500 dark:text-neutral-400">
           <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1">
@@ -125,39 +134,40 @@ export default async function Profile() {
         templatePresets={templatePresets}
       />
 
-      <ProfileExports />
-
-      <section className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-blue-950/20 dark:via-neutral-900 dark:to-cyan-950/10 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Imports</h2>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Migrate external exports into Dispatch with a preview-first wizard, field mapping, duplicate handling, and transactional commit safety.
-        </p>
-        <div className="mt-4">
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-sky-50 via-white to-blue-50 dark:from-sky-950/20 dark:via-neutral-900 dark:to-blue-950/10 p-6 shadow-sm">
+        <div>
+          <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Data Management</h2>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            Import or export your Dispatch data.
+          </p>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Link
-            href="/imports"
-            className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-all active:scale-95"
+            href="/profile/data/exports"
+            className="group rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900 px-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 dark:hover:border-blue-700/60 hover:shadow-md active:scale-[0.99]"
           >
-            Open Import Wizard
+            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Exports</p>
+            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+              Generate CSV, plain-text, and ICS task exports with previews and scope controls.
+            </p>
+            <span className="mt-3 inline-flex items-center rounded-md border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-700 dark:text-blue-300">
+              Open
+            </span>
+          </Link>
+          <Link
+            href="/profile/data/imports"
+            className="group rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900 px-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 dark:hover:border-emerald-700/60 hover:shadow-md active:scale-[0.99]"
+          >
+            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Imports</p>
+            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+              Use the guided import wizard for CSV, board JSON, workspace ZIP, ICS, plain text, and Dispatch round-trip files.
+            </p>
+            <span className="mt-3 inline-flex items-center rounded-md border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700 dark:text-emerald-300">
+              Open
+            </span>
           </Link>
         </div>
       </section>
-
-      {isAdmin && (
-        <section className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 via-white to-yellow-50 dark:from-amber-950/30 dark:via-neutral-900 dark:to-yellow-950/20 p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Administration</h2>
-          <p className="text-xs text-amber-700/80 dark:text-amber-400 mt-1">
-            Access administrator controls for user management and security settings.
-          </p>
-          <div className="mt-4">
-            <Link
-              href="/administration"
-              className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-all active:scale-95"
-            >
-              Open Administration
-            </Link>
-          </div>
-        </section>
-      )}
 
     </div>
   );

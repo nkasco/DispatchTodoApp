@@ -28,7 +28,6 @@ import {
   IconPuzzle,
   IconShield,
   IconSparkles,
-  IconCode,
 } from "@/components/icons";
 
 interface SidebarProps {
@@ -158,7 +157,6 @@ export function Sidebar({ onSearchOpen, onShortcutHelp, mobileOpen, onMobileClos
 
   const profileActive = isActive("/profile");
   const integrationsActive = isActive("/integrations");
-  const importsActive = isActive("/imports");
   const canShowAdminQuickAccess = session?.user?.role === "admin" && (session?.user?.showAdminQuickAccess ?? true);
 
   const currentProjectId = useMemo(() => {
@@ -551,27 +549,6 @@ export function Sidebar({ onSearchOpen, onShortcutHelp, mobileOpen, onMobileClos
                     }`}
                   >
                     Integrations
-                  </span>
-                </Link>
-              </li>
-
-              <li>
-                <Link
-                  href="/imports"
-                  title={collapsed ? "Imports" : undefined}
-                  className={`flex items-center rounded-lg py-2 text-sm transition-all ${
-                    importsActive
-                      ? "bg-neutral-800/60 text-white"
-                      : "text-neutral-400 hover:bg-neutral-800/40 hover:text-neutral-200"
-                  } ${collapsed ? "justify-center" : "gap-3 px-3"}`}
-                >
-                  <IconCode className="w-5 h-5 flex-shrink-0" />
-                  <span
-                    className={`whitespace-nowrap transition-all duration-300 ${
-                      collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
-                    }`}
-                  >
-                    Imports
                   </span>
                 </Link>
               </li>

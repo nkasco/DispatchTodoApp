@@ -1,5 +1,5 @@
-import { ImportsPage } from "@/components/ImportsPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <ImportsPage />;
+  redirect("/profile/data/imports");
 }
