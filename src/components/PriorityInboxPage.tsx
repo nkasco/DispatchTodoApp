@@ -13,6 +13,7 @@ import { useToast } from "@/components/ToastProvider";
 import { IconInbox, IconClock, IconTrash } from "@/components/icons";
 import { PROJECT_COLORS } from "@/lib/projects";
 import { addDaysToIsoDate, formatIsoDateForDisplay, getIsoDateForTimeZone } from "@/lib/timezone";
+import { formatDueDateTime } from "@/lib/due-time";
 
 const STATUS_STYLES: Record<TaskStatus, { dot: string; label: string; ring: string }> = {
   open: { dot: "bg-blue-500", label: "Open", ring: "text-blue-500" },
@@ -566,7 +567,7 @@ function InboxTaskRow({
         </span>
         {task.dueDate && (
           <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
-            {task.dueDate}
+            {formatDueDateTime(task.dueDate, task.dueTime) ?? task.dueDate}
           </span>
         )}
       </div>

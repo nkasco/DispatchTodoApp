@@ -21,6 +21,7 @@ const TEST_USER = {
   role: "admin" as const,
   showAdminQuickAccess: true,
   assistantEnabled: true,
+  dashboardDueTimesEnabled: false,
   timeZone: null,
 };
 
@@ -65,6 +66,7 @@ describe("Me API", () => {
     expect(await res.json()).toEqual({
       showAdminQuickAccess: false,
       assistantEnabled: true,
+      dashboardDueTimesEnabled: false,
       timeZone: null,
       templatePresets: EMPTY_TEMPLATE_PRESETS,
     });
@@ -86,6 +88,7 @@ describe("Me API", () => {
     expect(await res.json()).toEqual({
       showAdminQuickAccess: true,
       assistantEnabled: false,
+      dashboardDueTimesEnabled: false,
       timeZone: null,
       templatePresets: EMPTY_TEMPLATE_PRESETS,
     });
@@ -96,6 +99,28 @@ describe("Me API", () => {
       .where(eq(users.id, TEST_USER.id))
       .all();
     expect(updated.assistantEnabled).toBe(false);
+  });
+
+  it("PUT updates dashboard due time visibility", async () => {
+    const res = await PUT(
+      jsonReq("http://localhost/api/me", { dashboardDueTimesEnabled: true }),
+      {},
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      showAdminQuickAccess: true,
+      assistantEnabled: true,
+      dashboardDueTimesEnabled: true,
+      timeZone: null,
+      templatePresets: EMPTY_TEMPLATE_PRESETS,
+    });
+
+    const [updated] = testDb.db
+      .select({ dashboardDueTimesEnabled: users.dashboardDueTimesEnabled })
+      .from(users)
+      .where(eq(users.id, TEST_USER.id))
+      .all();
+    expect(updated.dashboardDueTimesEnabled).toBe(true);
   });
 
   it("PUT rejects invalid payload values", async () => {
@@ -115,6 +140,7 @@ describe("Me API", () => {
     expect(await res.json()).toEqual({
       showAdminQuickAccess: true,
       assistantEnabled: true,
+      dashboardDueTimesEnabled: false,
       timeZone: "America/Los_Angeles",
       templatePresets: EMPTY_TEMPLATE_PRESETS,
     });
@@ -173,6 +199,7 @@ describe("Me API", () => {
     expect(await res.json()).toEqual({
       showAdminQuickAccess: true,
       assistantEnabled: true,
+      dashboardDueTimesEnabled: false,
       timeZone: null,
       templatePresets,
     });

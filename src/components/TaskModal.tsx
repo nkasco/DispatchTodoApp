@@ -13,6 +13,7 @@ import {
 import { PROJECT_COLORS } from "@/lib/projects";
 import { CustomSelect } from "@/components/CustomSelect";
 import { renderTemplate } from "@/lib/templates";
+import { formatDueDateTime } from "@/lib/due-time";
 
 export function TaskModal({
   task,
@@ -36,6 +37,7 @@ export function TaskModal({
     task?.priority ?? "medium",
   );
   const [dueDate, setDueDate] = useState(task?.dueDate ?? "");
+  const [dueTime, setDueTime] = useState(task?.dueTime ?? "");
   const [projectId, setProjectId] = useState(
     task?.projectId ?? defaultProjectId ?? "",
   );
@@ -121,6 +123,7 @@ export function TaskModal({
           ...(hideStatus ? {} : { status }),
           priority,
           dueDate: dueDate || null,
+          dueTime: dueDate ? (dueTime || null) : null,
           projectId: projectId || null,
         });
       } else {
@@ -130,6 +133,7 @@ export function TaskModal({
           status: hideStatus ? "open" : status,
           priority,
           dueDate: dueDate || undefined,
+          dueTime: dueDate ? (dueTime || undefined) : undefined,
           projectId: projectId || null,
         });
       }
@@ -405,7 +409,7 @@ export function TaskModal({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[0.8fr_1.2fr] gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-[0.8fr_0.8fr_1.2fr] gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
               Due Date
@@ -413,8 +417,27 @@ export function TaskModal({
             <input
               type="date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={(e) => {
+                const nextDate = e.target.value;
+                setDueDate(nextDate);
+                if (!nextDate) {
+                  setDueTime("");
+                }
+              }}
               className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+            />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+              Due Time
+            </p>
+            <input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              disabled={!dueDate}
+              className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors disabled:opacity-50"
             />
           </div>
 
@@ -425,6 +448,12 @@ export function TaskModal({
             options={projectOptions}
           />
         </div>
+
+        {(dueDate || dueTime) && (
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Scheduled for {formatDueDateTime(dueDate || null, dueTime || null) ?? dueDate}
+          </p>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button

@@ -9,6 +9,7 @@ import {
   type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
 } from "@/lib/task-recurrence";
+import { isValidDueTime } from "@/lib/due-time";
 
 const VALID_PRIORITIES = ["low", "medium", "high"] as const;
 const VALID_SERIES_TYPES = ["daily", "weekly", "monthly", "custom"] as const;
@@ -42,6 +43,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
     recurrenceBehavior,
     recurrenceRule,
     nextDueDate,
+    dueTime,
     active,
   } = body as Record<string, unknown>;
 
@@ -77,6 +79,12 @@ export const PUT = withAuth(async (req, session, ctx) => {
   }
   if (typeof nextDueDate === "string" && !isIsoDate(nextDueDate)) {
     return errorResponse("nextDueDate must be a YYYY-MM-DD date", 400);
+  }
+  if (dueTime !== undefined && dueTime !== null && typeof dueTime !== "string") {
+    return errorResponse("dueTime must be a string (HH:MM) or null", 400);
+  }
+  if (typeof dueTime === "string" && !isValidDueTime(dueTime)) {
+    return errorResponse("dueTime must be a valid 24-hour time in HH:MM format", 400);
   }
   if (active !== undefined && typeof active !== "boolean") {
     return errorResponse("active must be a boolean", 400);
@@ -146,6 +154,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
   if (recurrenceBehavior !== undefined) updates.recurrenceBehavior = recurrenceBehavior as TaskRecurrenceBehavior;
   if (hasRecurrenceRule || hasRecurrenceType) updates.recurrenceRule = nextRule;
   if (nextDueDate !== undefined) updates.nextDueDate = nextDueDate;
+  if (dueTime !== undefined) updates.dueTime = dueTime;
   if (active !== undefined) updates.active = active;
 
   const [updated] = await db

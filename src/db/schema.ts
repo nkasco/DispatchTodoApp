@@ -22,6 +22,9 @@ export const users = sqliteTable("user", {
   assistantEnabled: integer("assistantEnabled", { mode: "boolean" })
     .notNull()
     .default(true),
+  dashboardDueTimesEnabled: integer("dashboardDueTimesEnabled", { mode: "boolean" })
+    .notNull()
+    .default(false),
 });
 
 export const accounts = sqliteTable(
@@ -102,6 +105,7 @@ export const tasks = sqliteTable(
       .notNull()
       .default("medium"),
     dueDate: text("dueDate"),
+    dueTime: text("dueTime"),
     recurrenceType: text("recurrenceType", {
       enum: ["none", "daily", "weekly", "monthly", "custom"],
     })
@@ -157,6 +161,7 @@ export const recurrenceSeries = sqliteTable(
       .default("after_completion"),
     recurrenceRule: text("recurrenceRule"),
     nextDueDate: text("nextDueDate").notNull(),
+    dueTime: text("dueTime"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     deletedAt: text("deletedAt"),
     createdAt: text("createdAt")

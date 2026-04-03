@@ -67,6 +67,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string | null;
+  dueTime: string | null;
   recurrenceType: TaskRecurrenceType;
   recurrenceBehavior: TaskRecurrenceBehavior;
   recurrenceRule: string | null;
@@ -86,6 +87,7 @@ export interface RecurrenceSeries {
   recurrenceBehavior: TaskRecurrenceBehavior;
   recurrenceRule: string | null;
   nextDueDate: string;
+  dueTime: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -192,6 +194,7 @@ export interface AdminVersionStatus {
 interface MePreferences {
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
+  dashboardDueTimesEnabled?: boolean;
   timeZone?: string | null;
   templatePresets?: TemplatePresets;
 }
@@ -199,6 +202,7 @@ interface MePreferences {
 export interface MePreferencesPayload {
   showAdminQuickAccess: boolean;
   assistantEnabled: boolean;
+  dashboardDueTimesEnabled: boolean;
   timeZone: string | null;
   templatePresets: TemplatePresets;
 }
@@ -387,6 +391,7 @@ export const api = {
       status?: TaskStatus;
       priority?: TaskPriority;
       dueDate?: string;
+      dueTime?: string;
       projectId?: string | null;
       recurrenceType?: TaskRecurrenceType;
       recurrenceBehavior?: TaskRecurrenceBehavior;
@@ -405,6 +410,7 @@ export const api = {
         status?: TaskStatus;
         priority?: TaskPriority;
         dueDate?: string | null;
+        dueTime?: string | null;
         projectId?: string | null;
         recurrenceType?: TaskRecurrenceType;
         recurrenceBehavior?: TaskRecurrenceBehavior;
@@ -435,6 +441,7 @@ export const api = {
       recurrenceBehavior?: TaskRecurrenceBehavior;
       recurrenceRule?: TaskCustomRecurrenceRule | null;
       nextDueDate: string;
+      dueTime?: string | null;
       active?: boolean;
     }) =>
       request<RecurrenceSeries>("/recurrences", { method: "POST", body: JSON.stringify(data) }),
@@ -450,6 +457,7 @@ export const api = {
         recurrenceBehavior?: TaskRecurrenceBehavior;
         recurrenceRule?: TaskCustomRecurrenceRule | null;
         nextDueDate?: string;
+        dueTime?: string | null;
         active?: boolean;
       },
     ) =>

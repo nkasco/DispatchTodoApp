@@ -72,12 +72,14 @@ export function ProfilePreferences({
   isAdmin = false,
   showAdminQuickAccess = true,
   assistantEnabled = true,
+  dashboardDueTimesEnabled = false,
   timeZone = null,
   templatePresets = { tasks: [], notes: [], dispatches: [] },
 }: {
   isAdmin?: boolean;
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
+  dashboardDueTimesEnabled?: boolean;
   timeZone?: string | null;
   templatePresets?: TemplatePresets;
 }) {
@@ -87,8 +89,10 @@ export function ProfilePreferences({
 
   const [showAdminButton, setShowAdminButton] = useState(showAdminQuickAccess);
   const [assistantVisible, setAssistantVisible] = useState(assistantEnabled);
+  const [dashboardDueTimesVisible, setDashboardDueTimesVisible] = useState(dashboardDueTimesEnabled);
   const [savingAdminButtonPref, setSavingAdminButtonPref] = useState(false);
   const [savingAssistantVisibility, setSavingAssistantVisibility] = useState(false);
+  const [savingDashboardDueTimes, setSavingDashboardDueTimes] = useState(false);
   const [timezoneValue, setTimezoneValue] = useState(timeZone ?? "");
   const [timeZoneOptions, setTimeZoneOptions] = useState<Array<{ value: string; label: string }>>([
     { value: "", label: "System default (auto)" },
@@ -160,6 +164,10 @@ export function ProfilePreferences({
   useEffect(() => {
     setProfileTemplates(templatePresets);
   }, [templatePresets]);
+
+  useEffect(() => {
+    setDashboardDueTimesVisible(dashboardDueTimesEnabled);
+  }, [dashboardDueTimesEnabled]);
 
   useEffect(() => {
     try {
@@ -314,6 +322,22 @@ export function ProfilePreferences({
       toast.error(error instanceof Error ? error.message : "Failed to update assistant visibility");
     } finally {
       setSavingAssistantVisibility(false);
+    }
+  }
+
+  async function handleToggleDashboardDueTimes() {
+    const next = !dashboardDueTimesVisible;
+    setDashboardDueTimesVisible(next);
+    setSavingDashboardDueTimes(true);
+
+    try {
+      await api.me.updatePreferences({ dashboardDueTimesEnabled: next });
+      toast.success(next ? "Dashboard due times enabled" : "Dashboard due times hidden");
+    } catch (error) {
+      setDashboardDueTimesVisible(!next);
+      toast.error(error instanceof Error ? error.message : "Failed to update dashboard due time preference");
+    } finally {
+      setSavingDashboardDueTimes(false);
     }
   }
 
@@ -646,6 +670,26 @@ export function ProfilePreferences({
             }`}
           >
             {assistantVisible ? "Enabled" : "Hidden"}
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Dashboard Due Times</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">
+              Show task due times on the dashboard page. Hidden by default.
+            </p>
+          </div>
+          <button
+            onClick={handleToggleDashboardDueTimes}
+            disabled={savingDashboardDueTimes}
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all active:scale-95 disabled:opacity-60 ${
+              dashboardDueTimesVisible
+                ? "border border-green-200 bg-green-50 text-green-700 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300"
+                : "border border-neutral-200 bg-neutral-100 text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+            }`}
+          >
+            {dashboardDueTimesVisible ? "Shown" : "Hidden"}
           </button>
         </div>
 

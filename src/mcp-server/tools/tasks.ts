@@ -11,6 +11,7 @@ import {
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
+import { isValidDueTime } from "@/lib/due-time";
 
 const TASK_STATUS = ["open", "in_progress", "done"] as const;
 const TASK_PRIORITY = ["low", "medium", "high"] as const;
@@ -65,6 +66,7 @@ export function registerTaskTools(server: McpServer) {
         status: z.enum(TASK_STATUS).optional(),
         priority: z.enum(TASK_PRIORITY).optional(),
         dueDate: z.string().optional(),
+        dueTime: z.string().optional(),
         projectId: z.string().nullable().optional(),
         recurrenceType: z.enum(TASK_RECURRENCE).optional(),
         recurrenceBehavior: z.enum(TASK_RECURRENCE_BEHAVIOR).optional(),
@@ -73,6 +75,9 @@ export function registerTaskTools(server: McpServer) {
     },
     async (args, extra) => {
       const userId = requireUserId(extra);
+      if (args.dueTime !== undefined && !isValidDueTime(args.dueTime)) {
+        throw new Error("dueTime must be a valid 24-hour time in HH:MM format.");
+      }
       if (args.projectId) {
         const [project] = await db
           .select({ id: projects.id })
@@ -113,6 +118,10 @@ export function registerTaskTools(server: McpServer) {
         throw new Error("dueDate is required when recurrenceBehavior is duplicate_on_schedule.");
       }
 
+      if (args.dueTime !== undefined && (!args.dueDate || args.dueDate.trim().length === 0)) {
+        throw new Error("dueDate is required when dueTime is set.");
+      }
+
       const now = new Date().toISOString();
       const [task] = await db
         .insert(tasks)
@@ -123,6 +132,7 @@ export function registerTaskTools(server: McpServer) {
           status: args.status ?? "open",
           priority: args.priority ?? "medium",
           dueDate: args.dueDate,
+          dueTime: args.dueTime,
           projectId: args.projectId ?? null,
           recurrenceType,
           recurrenceBehavior,
@@ -147,6 +157,7 @@ export function registerTaskTools(server: McpServer) {
         status: z.enum(TASK_STATUS).optional(),
         priority: z.enum(TASK_PRIORITY).optional(),
         dueDate: z.string().nullable().optional(),
+        dueTime: z.string().nullable().optional(),
         projectId: z.string().nullable().optional(),
         recurrenceType: z.enum(TASK_RECURRENCE).optional(),
         recurrenceBehavior: z.enum(TASK_RECURRENCE_BEHAVIOR).optional(),
@@ -165,6 +176,7 @@ export function registerTaskTools(server: McpServer) {
           priority: tasks.priority,
           projectId: tasks.projectId,
           dueDate: tasks.dueDate,
+          dueTime: tasks.dueTime,
           recurrenceType: tasks.recurrenceType,
           recurrenceBehavior: tasks.recurrenceBehavior,
           recurrenceRule: tasks.recurrenceRule,
@@ -176,6 +188,10 @@ export function registerTaskTools(server: McpServer) {
         .limit(1);
 
       if (!existing) throw new Error("Task not found.");
+
+      if (args.dueTime !== undefined && args.dueTime !== null && !isValidDueTime(args.dueTime)) {
+        throw new Error("dueTime must be a valid 24-hour time in HH:MM format.");
+      }
 
       if (args.projectId) {
         const [project] = await db
@@ -203,6 +219,7 @@ export function registerTaskTools(server: McpServer) {
         : existing.recurrenceBehavior;
       let nextRecurrenceRule = existing.recurrenceRule;
       const nextDueDate = args.dueDate !== undefined ? args.dueDate : existing.dueDate;
+      const nextDueTime = args.dueTime !== undefined ? args.dueTime : existing.dueTime;
 
       if (hasRecurrenceRule) {
         if (args.recurrenceRule === null) {
@@ -235,12 +252,17 @@ export function registerTaskTools(server: McpServer) {
         throw new Error("dueDate is required when recurrenceBehavior is duplicate_on_schedule.");
       }
 
+      if (nextDueTime && !nextDueDate) {
+        throw new Error("dueDate is required when dueTime is set.");
+      }
+
       const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (args.title !== undefined) updates.title = args.title.trim();
       if (args.description !== undefined) updates.description = args.description;
       if (args.status !== undefined) updates.status = args.status;
       if (args.priority !== undefined) updates.priority = args.priority;
       if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
+      if (args.dueTime !== undefined) updates.dueTime = args.dueTime;
       if (args.projectId !== undefined) updates.projectId = args.projectId;
       if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
       if (hasRecurrenceBehavior || hasRecurrenceType) {

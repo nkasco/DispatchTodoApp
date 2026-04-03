@@ -10,6 +10,7 @@ import {
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
+import { isValidDueTime } from "@/lib/due-time";
 import { db } from "@/db";
 import { tasks, projects } from "@/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
@@ -95,6 +96,7 @@ export const POST = withAuth(async (req, session) => {
     status,
     priority,
     dueDate,
+    dueTime,
     projectId,
     recurrenceType,
     recurrenceBehavior,
@@ -131,6 +133,14 @@ export const POST = withAuth(async (req, session) => {
 
   if (dueDate !== undefined && typeof dueDate !== "string") {
     return errorResponse("dueDate must be a string (ISO date)", 400);
+  }
+
+  if (dueTime !== undefined && dueTime !== null && typeof dueTime !== "string") {
+    return errorResponse("dueTime must be a string (HH:MM) or null", 400);
+  }
+
+  if (typeof dueTime === "string" && !isValidDueTime(dueTime)) {
+    return errorResponse("dueTime must be a valid 24-hour time in HH:MM format", 400);
   }
 
   if (projectId !== undefined && projectId !== null && typeof projectId !== "string") {
@@ -178,6 +188,10 @@ export const POST = withAuth(async (req, session) => {
     );
   }
 
+  if (typeof dueTime === "string" && (!dueDate || typeof dueDate !== "string" || dueDate.trim().length === 0)) {
+    return errorResponse("dueDate is required when dueTime is set", 400);
+  }
+
   let resolvedProjectId: string | null | undefined = undefined;
   if (projectId === null) {
     resolvedProjectId = null;
@@ -204,6 +218,7 @@ export const POST = withAuth(async (req, session) => {
       status: (status as typeof VALID_STATUSES[number]) ?? "open",
       priority: (priority as typeof VALID_PRIORITIES[number]) ?? "medium",
       dueDate: dueDate as string | undefined,
+      dueTime: dueTime as string | null | undefined,
       recurrenceType: resolvedRecurrenceType,
       recurrenceBehavior: resolvedRecurrenceBehavior,
       recurrenceRule: resolvedRecurrenceRule,

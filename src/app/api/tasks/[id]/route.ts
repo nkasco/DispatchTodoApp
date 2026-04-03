@@ -10,6 +10,7 @@ import {
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
+import { isValidDueTime } from "@/lib/due-time";
 import { db } from "@/db";
 import { tasks, projects, recurrenceSeries } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -55,6 +56,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
     status,
     priority,
     dueDate,
+    dueTime,
     projectId,
     recurrenceType,
     recurrenceBehavior,
@@ -91,6 +93,14 @@ export const PUT = withAuth(async (req, session, ctx) => {
 
   if (dueDate !== undefined && dueDate !== null && typeof dueDate !== "string") {
     return errorResponse("dueDate must be a string (ISO date) or null", 400);
+  }
+
+  if (dueTime !== undefined && dueTime !== null && typeof dueTime !== "string") {
+    return errorResponse("dueTime must be a string (HH:MM) or null", 400);
+  }
+
+  if (typeof dueTime === "string" && !isValidDueTime(dueTime)) {
+    return errorResponse("dueTime must be a valid 24-hour time in HH:MM format", 400);
   }
 
   if (projectId !== undefined && projectId !== null && typeof projectId !== "string") {
@@ -133,6 +143,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
       priority: tasks.priority,
       projectId: tasks.projectId,
       dueDate: tasks.dueDate,
+      dueTime: tasks.dueTime,
       recurrenceType: tasks.recurrenceType,
       recurrenceBehavior: tasks.recurrenceBehavior,
       recurrenceRule: tasks.recurrenceRule,
@@ -158,6 +169,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
     : existing.recurrenceBehavior;
   let nextRecurrenceRule = existing.recurrenceRule;
   const nextDueDate = dueDate !== undefined ? dueDate : existing.dueDate;
+  const nextDueTime = dueTime !== undefined ? dueTime : existing.dueTime;
 
   if (hasRecurrenceRule) {
     if (recurrenceRule === null) {
@@ -199,12 +211,17 @@ export const PUT = withAuth(async (req, session, ctx) => {
     );
   }
 
+  if (typeof nextDueTime === "string" && (!nextDueDate || typeof nextDueDate !== "string" || nextDueDate.trim().length === 0)) {
+    return errorResponse("dueDate is required when dueTime is set", 400);
+  }
+
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   if (title !== undefined) updates.title = (title as string).trim();
   if (description !== undefined) updates.description = description;
   if (status !== undefined) updates.status = status;
   if (priority !== undefined) updates.priority = priority;
   if (dueDate !== undefined) updates.dueDate = dueDate;
+  if (dueTime !== undefined) updates.dueTime = dueTime;
   if (projectId !== undefined) updates.projectId = resolvedProjectId;
   if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
   if (hasRecurrenceBehavior || hasRecurrenceType) updates.recurrenceBehavior = nextRecurrenceBehavior;

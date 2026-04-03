@@ -11,6 +11,7 @@ import {
   type TaskRecurrenceBehavior,
   type TaskTemplatePreset,
 } from "@/lib/client";
+import { formatDueDateTime } from "@/lib/due-time";
 import { parseTaskCustomRecurrenceRule } from "@/lib/task-recurrence";
 import { PROJECT_COLORS } from "@/lib/projects";
 import { CustomSelect } from "@/components/CustomSelect";
@@ -44,6 +45,7 @@ export function RecurrenceSeriesModal({
   const [customInterval, setCustomInterval] = useState<string>(String(parsedRule?.interval ?? 2));
   const [customUnit, setCustomUnit] = useState<TaskCustomRecurrenceUnit>(parsedRule?.unit ?? "week");
   const [nextDueDate, setNextDueDate] = useState(series?.nextDueDate ?? "");
+  const [dueTime, setDueTime] = useState(series?.dueTime ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -172,6 +174,7 @@ export function RecurrenceSeriesModal({
           ? { interval: Number(customInterval), unit: customUnit }
           : null,
         nextDueDate,
+        dueTime: dueTime || null,
       };
 
       if (isEditing) {
@@ -378,7 +381,7 @@ export function RecurrenceSeriesModal({
             onChange={(value) => setRecurrenceBehavior(value as TaskRecurrenceBehavior)}
           />
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Instances are materialized at midnight on the due date.
+            Instances are materialized on {formatDueDateTime("the due date", dueTime || null) ?? "the due date"}.
           </p>
           {recurrenceType === "custom" && (
             <div className="grid grid-cols-[0.6fr_1fr] gap-3">
@@ -406,7 +409,7 @@ export function RecurrenceSeriesModal({
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 items-end">
+        <div className="grid grid-cols-1 gap-4 items-end sm:grid-cols-2">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
               Next Due Date
@@ -415,6 +418,17 @@ export function RecurrenceSeriesModal({
               type="date"
               value={nextDueDate}
               onChange={(e) => setNextDueDate(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+              Due Time
+            </label>
+            <input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
               className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
             />
           </div>

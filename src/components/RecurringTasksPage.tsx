@@ -12,6 +12,7 @@ import {
   IconPlus,
 } from "@/components/icons";
 import { PROJECT_COLORS } from "@/lib/projects";
+import { formatDueDateTime } from "@/lib/due-time";
 import {
   getRecurrenceSeriesPreview,
   RECURRENCE_BEHAVIOR_LABELS,
@@ -187,7 +188,7 @@ export function RecurringTasksPage() {
                       ) : null}
                       {entry.nextDueDate ? (
                         <span className="text-xs text-neutral-400 dark:text-neutral-500">
-                          Next {entry.nextDueDate}
+                          Next {formatDueDateTime(entry.nextDueDate, entry.dueTime) ?? entry.nextDueDate}
                         </span>
                       ) : null}
                     </div>

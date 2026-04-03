@@ -100,6 +100,7 @@ describe("Tasks API", () => {
           status: "in_progress",
           priority: "high",
           dueDate: "2025-12-31",
+          dueTime: "09:30",
         }),
         {}
       );
@@ -110,6 +111,7 @@ describe("Tasks API", () => {
       expect(data.status).toBe("in_progress");
       expect(data.priority).toBe("high");
       expect(data.dueDate).toBe("2025-12-31");
+      expect(data.dueTime).toBe("09:30");
     });
 
     it("creates a recurring task with built-in recurrence", async () => {
@@ -227,6 +229,17 @@ describe("Tasks API", () => {
           title: "Schedule duplicate",
           recurrenceType: "weekly",
           recurrenceBehavior: "duplicate_on_schedule",
+        }),
+        {},
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("requires dueDate when dueTime is provided", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Timed task",
+          dueTime: "08:15",
         }),
         {},
       );

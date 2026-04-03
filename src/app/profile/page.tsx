@@ -40,6 +40,7 @@ export default async function Profile() {
         role: users.role,
         showAdminQuickAccess: users.showAdminQuickAccess,
         assistantEnabled: users.assistantEnabled,
+        dashboardDueTimesEnabled: users.dashboardDueTimesEnabled,
         timeZone: users.timeZone,
         templatePresets: users.templatePresets,
       })
@@ -53,6 +54,7 @@ export default async function Profile() {
   const isAdmin = currentUserRecord?.role === "admin";
   const showAdminQuickAccess = currentUserRecord?.showAdminQuickAccess ?? true;
   const assistantEnabled = currentUserRecord?.assistantEnabled ?? true;
+  const dashboardDueTimesEnabled = currentUserRecord?.dashboardDueTimesEnabled ?? false;
   const timeZone = currentUserRecord?.timeZone ?? null;
   const templatePresets = parseStoredTemplatePresets(currentUserRecord?.templatePresets ?? null);
 
@@ -120,6 +122,7 @@ export default async function Profile() {
         isAdmin={isAdmin}
         showAdminQuickAccess={showAdminQuickAccess}
         assistantEnabled={assistantEnabled}
+        dashboardDueTimesEnabled={dashboardDueTimesEnabled}
         timeZone={timeZone}
         templatePresets={templatePresets}
       />

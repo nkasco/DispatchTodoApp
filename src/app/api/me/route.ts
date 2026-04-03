@@ -14,6 +14,7 @@ export const GET = withAuth(async (_req, session) => {
     .select({
       showAdminQuickAccess: users.showAdminQuickAccess,
       assistantEnabled: users.assistantEnabled,
+      dashboardDueTimesEnabled: users.dashboardDueTimesEnabled,
       timeZone: users.timeZone,
       templatePresets: users.templatePresets,
     })
@@ -25,6 +26,7 @@ export const GET = withAuth(async (_req, session) => {
     user: session.user,
     showAdminQuickAccess: preferences?.showAdminQuickAccess ?? true,
     assistantEnabled: preferences?.assistantEnabled ?? true,
+    dashboardDueTimesEnabled: preferences?.dashboardDueTimesEnabled ?? false,
     timeZone: preferences?.timeZone ?? null,
     templatePresets: parseStoredTemplatePresets(preferences?.templatePresets),
   });
@@ -38,7 +40,13 @@ export const PUT = withAuth(async (req, session) => {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const { showAdminQuickAccess, assistantEnabled, timeZone, templatePresets } = body as Record<string, unknown>;
+  const {
+    showAdminQuickAccess,
+    assistantEnabled,
+    dashboardDueTimesEnabled,
+    timeZone,
+    templatePresets,
+  } = body as Record<string, unknown>;
 
   if (showAdminQuickAccess !== undefined && typeof showAdminQuickAccess !== "boolean") {
     return errorResponse("showAdminQuickAccess must be a boolean", 400);
@@ -46,6 +54,10 @@ export const PUT = withAuth(async (req, session) => {
 
   if (assistantEnabled !== undefined && typeof assistantEnabled !== "boolean") {
     return errorResponse("assistantEnabled must be a boolean", 400);
+  }
+
+  if (dashboardDueTimesEnabled !== undefined && typeof dashboardDueTimesEnabled !== "boolean") {
+    return errorResponse("dashboardDueTimesEnabled must be a boolean", 400);
   }
 
   if (timeZone !== undefined && timeZone !== null && typeof timeZone !== "string") {
@@ -74,6 +86,7 @@ export const PUT = withAuth(async (req, session) => {
   if (
     showAdminQuickAccess === undefined
     && assistantEnabled === undefined
+    && dashboardDueTimesEnabled === undefined
     && timeZone === undefined
     && templatePresets === undefined
   ) {
@@ -83,6 +96,7 @@ export const PUT = withAuth(async (req, session) => {
   const updates: Record<string, unknown> = {};
   if (showAdminQuickAccess !== undefined) updates.showAdminQuickAccess = showAdminQuickAccess;
   if (assistantEnabled !== undefined) updates.assistantEnabled = assistantEnabled;
+  if (dashboardDueTimesEnabled !== undefined) updates.dashboardDueTimesEnabled = dashboardDueTimesEnabled;
   if (timeZone !== undefined) updates.timeZone = typeof timeZone === "string" ? timeZone.trim() : null;
   if (validatedTemplatePresets !== undefined) {
     updates.templatePresets = serializeTemplatePresets(validatedTemplatePresets);
@@ -95,6 +109,7 @@ export const PUT = withAuth(async (req, session) => {
     .returning({
       showAdminQuickAccess: users.showAdminQuickAccess,
       assistantEnabled: users.assistantEnabled,
+      dashboardDueTimesEnabled: users.dashboardDueTimesEnabled,
       timeZone: users.timeZone,
       templatePresets: users.templatePresets,
     });
@@ -104,6 +119,8 @@ export const PUT = withAuth(async (req, session) => {
       updated?.showAdminQuickAccess ?? (showAdminQuickAccess as boolean | undefined) ?? true,
     assistantEnabled:
       updated?.assistantEnabled ?? (assistantEnabled as boolean | undefined) ?? true,
+    dashboardDueTimesEnabled:
+      updated?.dashboardDueTimesEnabled ?? (dashboardDueTimesEnabled as boolean | undefined) ?? false,
     timeZone: updated?.timeZone ?? (typeof timeZone === "string" ? timeZone.trim() : null),
     templatePresets: parseStoredTemplatePresets(updated?.templatePresets),
   });

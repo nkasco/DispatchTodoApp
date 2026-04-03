@@ -1,4 +1,5 @@
 import type { RecurrenceSeries, Task } from "@/lib/client";
+import { formatDueDateTime } from "@/lib/due-time";
 import {
   describeTaskRecurrence,
   getNextTaskRecurrenceDate,
@@ -65,9 +66,10 @@ export function getRecurrenceSeriesPreview(series: RecurrenceSeries): {
   detail: string;
 } {
   const cadence = describeTaskRecurrence(series.recurrenceType, series.recurrenceRule);
+  const nextDue = formatDueDateTime(series.nextDueDate, series.dueTime) ?? series.nextDueDate;
   const detail = series.recurrenceBehavior === "after_completion"
-    ? `Next instance due ${series.nextDueDate}. Completing an instance advances this date.`
-    : `Next scheduled instance due ${series.nextDueDate}. Instances are created at midnight on schedule dates.`;
+    ? `Next instance due ${nextDue}. Completing an instance advances this date.`
+    : `Next scheduled instance due ${nextDue}. Instances are created on schedule dates using this due time.`;
 
   return {
     cadence,

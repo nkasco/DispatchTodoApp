@@ -6,6 +6,12 @@ type ColumnBootstrap = {
   addSql: string;
 };
 
+type TableBootstrap = {
+  name: string;
+  prerequisites: string[];
+  createSql: string;
+};
+
 const REQUIRED_COLUMNS: ColumnBootstrap[] = [
   {
     table: "user",
@@ -16,6 +22,11 @@ const REQUIRED_COLUMNS: ColumnBootstrap[] = [
     table: "user",
     column: "templatePresets",
     addSql: 'ALTER TABLE "user" ADD COLUMN "templatePresets" text',
+  },
+  {
+    table: "user",
+    column: "dashboardDueTimesEnabled",
+    addSql: 'ALTER TABLE "user" ADD COLUMN "dashboardDueTimesEnabled" integer NOT NULL DEFAULT 0',
   },
   {
     table: "task",
@@ -44,6 +55,16 @@ const REQUIRED_COLUMNS: ColumnBootstrap[] = [
     addSql: 'ALTER TABLE "task" ADD COLUMN "recurrenceProcessedAt" text',
   },
   {
+    table: "task",
+    column: "dueTime",
+    addSql: 'ALTER TABLE "task" ADD COLUMN "dueTime" text',
+  },
+  {
+    table: "recurrence_series",
+    column: "dueTime",
+    addSql: 'ALTER TABLE "recurrence_series" ADD COLUMN "dueTime" text',
+  },
+  {
     table: "security_setting",
     column: "shareAiApiKeyWithUsers",
     addSql:
@@ -57,8 +78,11 @@ const REQUIRED_COLUMNS: ColumnBootstrap[] = [
   },
 ];
 
-const REQUIRED_TABLES_SQL = [
-  `
+const REQUIRED_TABLES: TableBootstrap[] = [
+  {
+    name: "recurrence_series",
+    prerequisites: ["user", "project"],
+    createSql: `
   CREATE TABLE IF NOT EXISTS "recurrence_series" (
     "id" text PRIMARY KEY NOT NULL,
     "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
@@ -70,6 +94,7 @@ const REQUIRED_TABLES_SQL = [
     "recurrenceBehavior" text NOT NULL DEFAULT 'after_completion',
     "recurrenceRule" text,
     "nextDueDate" text NOT NULL,
+    "dueTime" text,
     "active" integer NOT NULL DEFAULT 1,
     "deletedAt" text,
     "createdAt" text NOT NULL DEFAULT (current_timestamp),
@@ -80,6 +105,7 @@ const REQUIRED_TABLES_SQL = [
   CREATE INDEX IF NOT EXISTS "recurrence_series_active_idx" ON "recurrence_series" ("active");
   CREATE INDEX IF NOT EXISTS "recurrence_series_nextDueDate_idx" ON "recurrence_series" ("nextDueDate");
   `,
+  },
 ];
 
 function tableExists(sqlite: Database.Database, table: string): boolean {
@@ -95,8 +121,17 @@ function hasColumn(sqlite: Database.Database, table: string, column: string): bo
 }
 
 export function ensureSchemaColumns(sqlite: Database.Database) {
-  for (const createSql of REQUIRED_TABLES_SQL) {
-    sqlite.exec(createSql);
+  for (const table of REQUIRED_TABLES) {
+    if (tableExists(sqlite, table.name)) {
+      continue;
+    }
+
+    const prerequisitesReady = table.prerequisites.every((dependency) => tableExists(sqlite, dependency));
+    if (!prerequisitesReady) {
+      continue;
+    }
+
+    sqlite.exec(table.createSql);
   }
 
   for (const spec of REQUIRED_COLUMNS) {
