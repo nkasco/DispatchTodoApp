@@ -72,6 +72,7 @@ next-env.d.ts
 .claude/
 .claude/settings.local.json
 .cursor/
+.codex/environments/environment.toml
 *.code-workspace
 
 # local exports
