@@ -1,12 +1,13 @@
 import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import {
+  doesIsoDateMatchTaskRecurrenceRule,
   getNextTaskRecurrenceDate,
+  getTaskRecurrenceDateConstraintMessage,
   isTaskRecurrenceBehavior,
   isTaskRecurrenceType,
-  parseTaskCustomRecurrenceRule,
-  serializeTaskCustomRecurrenceRule,
   type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
+  validateTaskRecurrenceRule,
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
@@ -170,34 +171,14 @@ export const PUT = withAuth(async (req, session, ctx) => {
   let nextRecurrenceRule = existing.recurrenceRule;
   const nextDueDate = dueDate !== undefined ? dueDate : existing.dueDate;
   const nextDueTime = dueTime !== undefined ? dueTime : existing.dueTime;
-
-  if (hasRecurrenceRule) {
-    if (recurrenceRule === null) {
-      nextRecurrenceRule = null;
-    } else {
-      const parsedRule = parseTaskCustomRecurrenceRule(recurrenceRule);
-      if (!parsedRule) {
-        return errorResponse(
-          "recurrenceRule must include interval (1-365) and unit (day|week|month)",
-          400,
-        );
-      }
-      nextRecurrenceRule = serializeTaskCustomRecurrenceRule(parsedRule);
-    }
+  const rawNextRecurrenceRule = hasRecurrenceRule
+    ? recurrenceRule
+    : (hasRecurrenceType && recurrenceType !== existing.recurrenceType ? null : existing.recurrenceRule);
+  const recurrenceValidation = validateTaskRecurrenceRule(nextRecurrenceType, rawNextRecurrenceRule);
+  if (recurrenceValidation.error) {
+    return errorResponse(recurrenceValidation.error, 400);
   }
-
-  if (nextRecurrenceType === "custom") {
-    if (!nextRecurrenceRule) {
-      return errorResponse("recurrenceRule is required when recurrenceType is custom", 400);
-    }
-  } else {
-    if (hasRecurrenceRule && recurrenceRule !== null && recurrenceRule !== undefined) {
-      return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
-    }
-    if (hasRecurrenceType) {
-      nextRecurrenceRule = null;
-    }
-  }
+  nextRecurrenceRule = recurrenceValidation.storedRule;
 
   if (nextRecurrenceType === "none") {
     nextRecurrenceBehavior = "after_completion";
@@ -213,6 +194,19 @@ export const PUT = withAuth(async (req, session, ctx) => {
 
   if (typeof nextDueTime === "string" && (!nextDueDate || typeof nextDueDate !== "string" || nextDueDate.trim().length === 0)) {
     return errorResponse("dueDate is required when dueTime is set", 400);
+  }
+
+  if (
+    nextRecurrenceType !== "none"
+    && typeof nextDueDate === "string"
+    && nextDueDate.trim().length > 0
+    && !doesIsoDateMatchTaskRecurrenceRule(nextDueDate, nextRecurrenceType, recurrenceValidation.parsedRule)
+  ) {
+    return errorResponse(
+      getTaskRecurrenceDateConstraintMessage("dueDate", nextRecurrenceType, recurrenceValidation.parsedRule)
+        ?? "dueDate does not match the recurrence rule",
+      400,
+    );
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };

@@ -58,6 +58,48 @@ describe("Recurrences API", () => {
     expect(data.dueTime).toBe("09:00");
   });
 
+  it("creates a weekly recurrence series with selected weekdays", async () => {
+    const res = await POST(
+      jsonReq("http://localhost/api/recurrences", "POST", {
+        title: "Team follow-up",
+        recurrenceType: "weekly",
+        recurrenceRule: {
+          interval: 1,
+          unit: "week",
+          weekdays: ["mon", "wed", "fri"],
+        },
+        nextDueDate: "2026-04-03",
+      }),
+      {},
+    );
+
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(JSON.parse(data.recurrenceRule)).toEqual({
+      interval: 1,
+      unit: "week",
+      weekdays: ["mon", "wed", "fri"],
+    });
+  });
+
+  it("rejects recurrence series when nextDueDate does not match selected weekdays", async () => {
+    const res = await POST(
+      jsonReq("http://localhost/api/recurrences", "POST", {
+        title: "Team follow-up",
+        recurrenceType: "weekly",
+        recurrenceRule: {
+          interval: 1,
+          unit: "week",
+          weekdays: ["mon", "wed", "fri"],
+        },
+        nextDueDate: "2026-04-04",
+      }),
+      {},
+    );
+
+    expect(res.status).toBe(400);
+  });
+
   it("rejects invalid dueTime values", async () => {
     const res = await POST(
       jsonReq("http://localhost/api/recurrences", "POST", {

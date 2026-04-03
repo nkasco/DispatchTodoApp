@@ -145,6 +145,26 @@ describe("Tasks API", () => {
       expect(JSON.parse(data.recurrenceRule)).toEqual({ interval: 2, unit: "week" });
     });
 
+    it("creates a weekly recurring task with selected weekdays", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Gym schedule",
+          dueDate: "2026-04-03",
+          recurrenceType: "weekly",
+          recurrenceRule: { interval: 1, unit: "week", weekdays: ["mon", "wed", "fri"] },
+        }),
+        {},
+      );
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(JSON.parse(data.recurrenceRule)).toEqual({
+        interval: 1,
+        unit: "week",
+        weekdays: ["mon", "wed", "fri"],
+      });
+    });
+
     it("trims whitespace from title", async () => {
       const res = await POST(
         jsonReq("http://localhost/api/tasks", "POST", { title: "  padded  " }),
@@ -246,7 +266,7 @@ describe("Tasks API", () => {
       expect(res.status).toBe(400);
     });
 
-    it("rejects recurrenceRule for non-custom recurrence", async () => {
+    it("rejects recurrenceRule for daily recurrence", async () => {
       const res = await POST(
         jsonReq("http://localhost/api/tasks", "POST", {
           title: "test",
@@ -255,6 +275,20 @@ describe("Tasks API", () => {
         }),
         {}
       );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects dueDate values that do not match selected weekdays", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Gym schedule",
+          dueDate: "2026-04-04",
+          recurrenceType: "weekly",
+          recurrenceRule: { interval: 1, unit: "week", weekdays: ["mon", "wed", "fri"] },
+        }),
+        {},
+      );
+
       expect(res.status).toBe(400);
     });
 

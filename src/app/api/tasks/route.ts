@@ -1,12 +1,13 @@
 import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import {
+  doesIsoDateMatchTaskRecurrenceRule,
+  getTaskRecurrenceDateConstraintMessage,
   isTaskRecurrenceBehavior,
   isTaskRecurrenceType,
-  parseTaskCustomRecurrenceRule,
-  serializeTaskCustomRecurrenceRule,
   type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
+  validateTaskRecurrenceRule,
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
@@ -162,20 +163,11 @@ export const POST = withAuth(async (req, session) => {
   const resolvedRecurrenceBehavior = resolvedRecurrenceType === "none"
     ? "after_completion"
     : (recurrenceBehavior as TaskRecurrenceBehavior | undefined) ?? "after_completion";
-  let resolvedRecurrenceRule: string | null = null;
-
-  if (resolvedRecurrenceType === "custom") {
-    const parsedRule = parseTaskCustomRecurrenceRule(recurrenceRule);
-    if (!parsedRule) {
-      return errorResponse(
-        "recurrenceRule is required for custom recurrence and must include interval (1-365) and unit (day|week|month)",
-        400,
-      );
-    }
-    resolvedRecurrenceRule = serializeTaskCustomRecurrenceRule(parsedRule);
-  } else if (recurrenceRule !== undefined && recurrenceRule !== null) {
-    return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
+  const recurrenceValidation = validateTaskRecurrenceRule(resolvedRecurrenceType, recurrenceRule);
+  if (recurrenceValidation.error) {
+    return errorResponse(recurrenceValidation.error, 400);
   }
+  const resolvedRecurrenceRule = recurrenceValidation.storedRule;
 
   if (
     resolvedRecurrenceType !== "none"
@@ -190,6 +182,19 @@ export const POST = withAuth(async (req, session) => {
 
   if (typeof dueTime === "string" && (!dueDate || typeof dueDate !== "string" || dueDate.trim().length === 0)) {
     return errorResponse("dueDate is required when dueTime is set", 400);
+  }
+
+  if (
+    resolvedRecurrenceType !== "none"
+    && typeof dueDate === "string"
+    && dueDate.trim().length > 0
+    && !doesIsoDateMatchTaskRecurrenceRule(dueDate, resolvedRecurrenceType, recurrenceValidation.parsedRule)
+  ) {
+    return errorResponse(
+      getTaskRecurrenceDateConstraintMessage("dueDate", resolvedRecurrenceType, recurrenceValidation.parsedRule)
+        ?? "dueDate does not match the recurrence rule",
+      400,
+    );
   }
 
   let resolvedProjectId: string | null | undefined = undefined;

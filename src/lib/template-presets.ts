@@ -1,8 +1,7 @@
 import {
   isTaskRecurrenceBehavior,
   isTaskRecurrenceType,
-  parseTaskCustomRecurrenceRule,
-  serializeTaskCustomRecurrenceRule,
+  validateTaskRecurrenceRule,
   type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
 } from "@/lib/task-recurrence";
@@ -62,14 +61,11 @@ function parseTaskPreset(value: unknown): TaskTemplatePreset {
       ? recurrenceBehaviorRaw
       : "after_completion";
 
-  let recurrenceRule: string | null = null;
-  if (recurrenceType === "custom") {
-    const parsedRule = parseTaskCustomRecurrenceRule(entry.recurrenceRule);
-    if (!parsedRule) {
-      throw new Error("task template custom recurrence requires a valid recurrenceRule");
-    }
-    recurrenceRule = serializeTaskCustomRecurrenceRule(parsedRule);
+  const { storedRule, error } = validateTaskRecurrenceRule(recurrenceType, entry.recurrenceRule);
+  if (error) {
+    throw new Error(`task template ${error}`);
   }
+  const recurrenceRule = storedRule;
 
   return {
     id,

@@ -5,13 +5,23 @@ export type TaskPriority = "low" | "medium" | "high";
 export type TaskRecurrenceType = "none" | "daily" | "weekly" | "monthly" | "custom";
 export type TaskRecurrenceBehavior = "after_completion" | "duplicate_on_schedule";
 export type TaskCustomRecurrenceUnit = "day" | "week" | "month";
+export type TaskRecurrenceWeekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
+export type TaskRecurrenceMonthlyOrdinal = 1 | 2 | 3 | 4 | -1;
 export type ProjectStatus = "active" | "paused" | "completed";
 export type UserRole = "member" | "admin";
 export type AIProvider = "openai" | "anthropic" | "google" | "ollama" | "lmstudio" | "custom";
 
+export interface TaskMonthlyWeekdayPattern {
+  kind: "nth_weekday";
+  ordinal: TaskRecurrenceMonthlyOrdinal;
+  weekday: TaskRecurrenceWeekday;
+}
+
 export interface TaskCustomRecurrenceRule {
   interval: number;
   unit: TaskCustomRecurrenceUnit;
+  weekdays?: TaskRecurrenceWeekday[];
+  monthlyPattern?: TaskMonthlyWeekdayPattern;
 }
 
 export interface TaskTemplatePreset {

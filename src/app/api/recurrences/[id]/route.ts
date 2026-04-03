@@ -3,11 +3,12 @@ import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import { db } from "@/db";
 import { projects, recurrenceSeries } from "@/db/schema";
 import {
+  doesIsoDateMatchTaskRecurrenceRule,
+  getTaskRecurrenceDateConstraintMessage,
   isTaskRecurrenceBehavior,
-  parseTaskCustomRecurrenceRule,
-  serializeTaskCustomRecurrenceRule,
   type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
+  validateTaskRecurrenceRule,
 } from "@/lib/task-recurrence";
 import { isValidDueTime } from "@/lib/due-time";
 
@@ -118,31 +119,22 @@ export const PUT = withAuth(async (req, session, ctx) => {
   const nextType = hasRecurrenceType
     ? recurrenceType as Exclude<TaskRecurrenceType, "none">
     : existing.recurrenceType;
-  let nextRule = existing.recurrenceRule;
-
-  if (hasRecurrenceRule) {
-    if (recurrenceRule === null) {
-      nextRule = null;
-    } else {
-      const parsed = parseTaskCustomRecurrenceRule(recurrenceRule);
-      if (!parsed) {
-        return errorResponse(
-          "recurrenceRule must include interval (1-365) and unit (day|week|month)",
-          400,
-        );
-      }
-      nextRule = serializeTaskCustomRecurrenceRule(parsed);
-    }
+  const rawNextRule = hasRecurrenceRule
+    ? recurrenceRule
+    : (hasRecurrenceType && recurrenceType !== existing.recurrenceType ? null : existing.recurrenceRule);
+  const recurrenceValidation = validateTaskRecurrenceRule(nextType, rawNextRule);
+  if (recurrenceValidation.error) {
+    return errorResponse(recurrenceValidation.error, 400);
   }
+  const nextRule = recurrenceValidation.storedRule;
 
-  if (nextType === "custom") {
-    if (!nextRule) {
-      return errorResponse("recurrenceRule is required when recurrenceType is custom", 400);
-    }
-  } else if (hasRecurrenceRule && recurrenceRule !== null && recurrenceRule !== undefined) {
-    return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
-  } else if (hasRecurrenceType) {
-    nextRule = null;
+  const nextNextDueDate = nextDueDate !== undefined ? nextDueDate as string : existing.nextDueDate;
+  if (!doesIsoDateMatchTaskRecurrenceRule(nextNextDueDate, nextType, recurrenceValidation.parsedRule)) {
+    return errorResponse(
+      getTaskRecurrenceDateConstraintMessage("nextDueDate", nextType, recurrenceValidation.parsedRule)
+        ?? "nextDueDate does not match the recurrence rule",
+      400,
+    );
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
