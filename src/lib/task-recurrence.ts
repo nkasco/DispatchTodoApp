@@ -302,6 +302,14 @@ export function validateTaskRecurrenceRule(
   }
 
   const parsedRule = hasRuleValue ? parseTaskCustomRecurrenceRule(recurrenceRule) : null;
+  if (hasRuleValue && !parsedRule) {
+    return {
+      parsedRule: null,
+      storedRule: null,
+      error: getTaskRecurrenceRuleError(recurrenceType),
+    };
+  }
+
   const normalizedRule = normalizeRuleForType(recurrenceType, parsedRule);
 
   if (recurrenceType === "custom" && !hasRuleValue) {

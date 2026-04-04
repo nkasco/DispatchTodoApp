@@ -100,6 +100,28 @@ describe("Recurrences API", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejects malformed monthly recurrenceRule payloads", async () => {
+    const res = await POST(
+      jsonReq("http://localhost/api/recurrences", "POST", {
+        title: "Finance review",
+        recurrenceType: "monthly",
+        recurrenceRule: {
+          interval: 1,
+          unit: "month",
+          monthlyPattern: {
+            kind: "nth_weekday",
+            ordinal: 9,
+            weekday: "mon",
+          },
+        },
+        nextDueDate: "2026-04-13",
+      }),
+      {},
+    );
+
+    expect(res.status).toBe(400);
+  });
+
   it("rejects invalid dueTime values", async () => {
     const res = await POST(
       jsonReq("http://localhost/api/recurrences", "POST", {

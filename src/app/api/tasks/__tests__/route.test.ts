@@ -292,6 +292,20 @@ describe("Tasks API", () => {
       expect(res.status).toBe(400);
     });
 
+    it("rejects malformed weekly recurrenceRule payloads", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Gym schedule",
+          dueDate: "2026-04-03",
+          recurrenceType: "weekly",
+          recurrenceRule: { interval: 0, unit: "week", weekdays: ["mon", "wed", "fri"] },
+        }),
+        {},
+      );
+
+      expect(res.status).toBe(400);
+    });
+
     it("rejects custom recurrence without rule", async () => {
       const res = await POST(
         jsonReq("http://localhost/api/tasks", "POST", {

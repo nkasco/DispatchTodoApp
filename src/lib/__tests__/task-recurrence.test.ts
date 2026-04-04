@@ -99,4 +99,22 @@ describe("task recurrence", () => {
 
     expect(result.error).toContain("weekly recurrence");
   });
+
+  it("rejects malformed weekly rules instead of falling back to defaults", () => {
+    const result = validateTaskRecurrenceRule("weekly", {
+      interval: 0,
+      unit: "week",
+      weekdays: ["mon", "wed"],
+    });
+
+    expect(result.error).toContain("weekly recurrence");
+    expect(result.storedRule).toBeNull();
+  });
+
+  it("rejects malformed monthly rules instead of falling back to defaults", () => {
+    const result = validateTaskRecurrenceRule("monthly", "{\"interval\":1,\"unit\":\"month\",\"monthlyPattern\":{\"kind\":\"nth_weekday\",\"ordinal\":9,\"weekday\":\"mon\"}}");
+
+    expect(result.error).toContain("monthly recurrence");
+    expect(result.storedRule).toBeNull();
+  });
 });
