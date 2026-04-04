@@ -550,7 +550,7 @@ function DashboardWidget({
                       </span>
                     </div>
                     <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-                      {formatDashboardTimestamp(item.updatedAt, dashboardDueTimesEnabled)}
+                      {formatDashboardTimestamp(item.updatedAt)}
                     </p>
                   </div>
                 ))}
@@ -596,13 +596,11 @@ function DashboardWidget({
               title="Task Activity"
               emptyMessage="No task updates yet."
               items={data.recentTaskActivity}
-              showTimes={dashboardDueTimesEnabled}
             />
             <ActivityCard
               title="Note Activity"
               emptyMessage="No note updates yet."
               items={data.recentNoteActivity}
-              showTimes={dashboardDueTimesEnabled}
             />
           </div>
         </section>
@@ -616,12 +614,10 @@ function ActivityCard({
   title,
   emptyMessage,
   items,
-  showTimes = true,
 }: {
   title: string;
   emptyMessage: string;
   items: ActivityItem[];
-  showTimes?: boolean;
 }) {
   return (
     <div className="h-full rounded-xl border border-neutral-200/70 bg-white/70 p-3 dark:border-neutral-700/80 dark:bg-neutral-800/35">
@@ -655,7 +651,7 @@ function ActivityCard({
                       <span className="font-medium">{label}:</span> {item.title}
                     </p>
                     <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
-                      {formatDashboardTimestamp(item.date, showTimes)}
+                      {formatDashboardTimestamp(item.date)}
                     </p>
                   </div>
                 </div>
@@ -668,13 +664,13 @@ function ActivityCard({
   );
 }
 
-function formatDashboardTimestamp(value: string, showTimes: boolean): string {
+export function formatDashboardTimestamp(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return showTimes ? date.toLocaleString() : date.toLocaleDateString();
+  return date.toLocaleString();
 }
 
 function FocusRing({

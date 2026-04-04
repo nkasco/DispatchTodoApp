@@ -236,8 +236,12 @@ export function registerTaskTools(server: McpServer) {
       let nextRecurrenceBehavior = hasRecurrenceBehavior
         ? args.recurrenceBehavior!
         : existing.recurrenceBehavior;
+      const isDueDateBeingCleared = args.dueDate !== undefined
+        && (args.dueDate === null || (typeof args.dueDate === "string" && args.dueDate.trim().length === 0));
       const nextDueDate = args.dueDate !== undefined ? args.dueDate : existing.dueDate;
-      const nextDueTime = args.dueTime !== undefined ? args.dueTime : existing.dueTime;
+      const nextDueTime = args.dueTime !== undefined
+        ? args.dueTime
+        : (isDueDateBeingCleared ? null : existing.dueTime);
       const rawNextRecurrenceRule = hasRecurrenceRule
         ? args.recurrenceRule
         : (hasRecurrenceType && args.recurrenceType !== existing.recurrenceType ? null : existing.recurrenceRule);
@@ -274,7 +278,7 @@ export function registerTaskTools(server: McpServer) {
       if (args.status !== undefined) updates.status = args.status;
       if (args.priority !== undefined) updates.priority = args.priority;
       if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
-      if (args.dueTime !== undefined) updates.dueTime = args.dueTime;
+      if (args.dueTime !== undefined || isDueDateBeingCleared) updates.dueTime = nextDueTime;
       if (args.projectId !== undefined) updates.projectId = args.projectId;
       if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
       if (hasRecurrenceBehavior || hasRecurrenceType) {

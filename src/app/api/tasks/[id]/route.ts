@@ -169,8 +169,12 @@ export const PUT = withAuth(async (req, session, ctx) => {
     ? recurrenceBehavior as TaskRecurrenceBehavior
     : existing.recurrenceBehavior;
   let nextRecurrenceRule = existing.recurrenceRule;
+  const isDueDateBeingCleared = dueDate !== undefined
+    && (dueDate === null || (typeof dueDate === "string" && dueDate.trim().length === 0));
   const nextDueDate = dueDate !== undefined ? dueDate : existing.dueDate;
-  const nextDueTime = dueTime !== undefined ? dueTime : existing.dueTime;
+  const nextDueTime = dueTime !== undefined
+    ? dueTime
+    : (isDueDateBeingCleared ? null : existing.dueTime);
   const rawNextRecurrenceRule = hasRecurrenceRule
     ? recurrenceRule
     : (hasRecurrenceType && recurrenceType !== existing.recurrenceType ? null : existing.recurrenceRule);
@@ -215,7 +219,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
   if (status !== undefined) updates.status = status;
   if (priority !== undefined) updates.priority = priority;
   if (dueDate !== undefined) updates.dueDate = dueDate;
-  if (dueTime !== undefined) updates.dueTime = dueTime;
+  if (dueTime !== undefined || isDueDateBeingCleared) updates.dueTime = nextDueTime;
   if (projectId !== undefined) updates.projectId = resolvedProjectId;
   if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
   if (hasRecurrenceBehavior || hasRecurrenceType) updates.recurrenceBehavior = nextRecurrenceBehavior;

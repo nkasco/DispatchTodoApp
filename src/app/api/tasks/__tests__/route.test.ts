@@ -606,6 +606,30 @@ describe("Tasks API", () => {
       expect(data.status).toBe("done");
     });
 
+    it("allows clearing dueDate without explicitly clearing an existing dueTime", async () => {
+      const createRes = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Scheduled task",
+          dueDate: "2026-04-10",
+          dueTime: "08:15",
+        }),
+        {},
+      );
+      const created = await createRes.json();
+
+      const res = await PUT(
+        jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
+          dueDate: null,
+        }),
+        ctx(created.id),
+      );
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.dueDate).toBeNull();
+      expect(data.dueTime).toBeNull();
+    });
+
     it("returns 404 for nonexistent task", async () => {
       const res = await PUT(
         jsonReq("http://localhost/api/tasks/nonexistent", "PUT", {
