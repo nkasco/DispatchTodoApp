@@ -5,18 +5,56 @@ import { createPortal } from "react-dom";
 import {
   api,
   type Project,
+  type TaskCustomRecurrenceRule,
+  type TaskRecurrenceMonthlyOrdinal,
+  type TaskRecurrenceWeekday,
   type RecurrenceSeries,
   type TaskCustomRecurrenceUnit,
   type TaskPriority,
   type TaskRecurrenceBehavior,
   type TaskTemplatePreset,
 } from "@/lib/client";
-import { parseTaskCustomRecurrenceRule } from "@/lib/task-recurrence";
+import { formatDueDateTime } from "@/lib/due-time";
+import {
+  doesIsoDateMatchTaskRecurrenceRule,
+  getTaskRecurrenceDateConstraintMessage,
+  parseTaskCustomRecurrenceRule,
+  TASK_RECURRENCE_MONTHLY_ORDINAL_LABELS,
+  TASK_RECURRENCE_WEEKDAY_LABELS,
+} from "@/lib/task-recurrence";
 import { PROJECT_COLORS } from "@/lib/projects";
 import { CustomSelect } from "@/components/CustomSelect";
 import { renderTemplate } from "@/lib/templates";
 
 type SeriesType = RecurrenceSeries["recurrenceType"];
+type MonthlyMode = "same_date" | "nth_weekday";
+
+const WEEKDAY_PICKER_ORDER: TaskRecurrenceWeekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const MONTHLY_ORDINAL_OPTIONS = [
+  { value: "1", label: TASK_RECURRENCE_MONTHLY_ORDINAL_LABELS[1] },
+  { value: "2", label: TASK_RECURRENCE_MONTHLY_ORDINAL_LABELS[2] },
+  { value: "3", label: TASK_RECURRENCE_MONTHLY_ORDINAL_LABELS[3] },
+  { value: "4", label: TASK_RECURRENCE_MONTHLY_ORDINAL_LABELS[4] },
+  { value: "-1", label: TASK_RECURRENCE_MONTHLY_ORDINAL_LABELS[-1] },
+];
+const WEEKDAY_SELECT_OPTIONS = WEEKDAY_PICKER_ORDER.map((weekday) => ({
+  value: weekday,
+  label: TASK_RECURRENCE_WEEKDAY_LABELS[weekday],
+}));
+
+function getWeekdayFromIsoDate(value?: string | null): TaskRecurrenceWeekday {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return "mon";
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    return "mon";
+  }
+
+  const weekdays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+  return weekdays[date.getUTCDay()];
+}
 
 export function RecurrenceSeriesModal({
   series,
@@ -43,7 +81,22 @@ export function RecurrenceSeriesModal({
   );
   const [customInterval, setCustomInterval] = useState<string>(String(parsedRule?.interval ?? 2));
   const [customUnit, setCustomUnit] = useState<TaskCustomRecurrenceUnit>(parsedRule?.unit ?? "week");
+  const [weeklyDays, setWeeklyDays] = useState<TaskRecurrenceWeekday[]>(
+    parsedRule?.unit === "week" ? (parsedRule.weekdays ?? []) : [],
+  );
+  const [monthlyMode, setMonthlyMode] = useState<MonthlyMode>(
+    parsedRule?.unit === "month" && parsedRule.monthlyPattern ? "nth_weekday" : "same_date",
+  );
+  const [monthlyOrdinal, setMonthlyOrdinal] = useState<TaskRecurrenceMonthlyOrdinal>(
+    parsedRule?.unit === "month" && parsedRule.monthlyPattern ? parsedRule.monthlyPattern.ordinal : 1,
+  );
+  const [monthlyWeekday, setMonthlyWeekday] = useState<TaskRecurrenceWeekday>(
+    parsedRule?.unit === "month" && parsedRule.monthlyPattern
+      ? parsedRule.monthlyPattern.weekday
+      : getWeekdayFromIsoDate(series?.nextDueDate),
+  );
   const [nextDueDate, setNextDueDate] = useState(series?.nextDueDate ?? "");
+  const [dueTime, setDueTime] = useState(series?.dueTime ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -84,6 +137,7 @@ export function RecurrenceSeriesModal({
   }, []);
 
   function applyTaskTemplate(template: TaskTemplatePreset) {
+    const parsed = parseTaskCustomRecurrenceRule(template.recurrenceRule);
     setTitle(template.title);
     setDescription(template.description);
     const templateSeriesType: SeriesType = template.recurrenceType === "none"
@@ -96,19 +150,79 @@ export function RecurrenceSeriesModal({
         : (template.recurrenceBehavior ?? "after_completion"),
     );
 
-    if (templateSeriesType === "custom") {
-      const parsed = parseTaskCustomRecurrenceRule(template.recurrenceRule);
-      if (parsed) {
-        setCustomInterval(String(parsed.interval));
-        setCustomUnit(parsed.unit);
-      } else {
-        setCustomInterval("2");
-        setCustomUnit("week");
-      }
+    if (parsed) {
+      setCustomInterval(String(parsed.interval));
+      setCustomUnit(parsed.unit);
+      setWeeklyDays(parsed.unit === "week" ? (parsed.weekdays ?? []) : []);
+      setMonthlyMode(parsed.unit === "month" && parsed.monthlyPattern ? "nth_weekday" : "same_date");
+      setMonthlyOrdinal(parsed.unit === "month" && parsed.monthlyPattern ? parsed.monthlyPattern.ordinal : 1);
+      setMonthlyWeekday(
+        parsed.unit === "month" && parsed.monthlyPattern
+          ? parsed.monthlyPattern.weekday
+          : getWeekdayFromIsoDate(nextDueDate),
+      );
     } else {
       setCustomInterval("2");
       setCustomUnit("week");
+      setWeeklyDays([]);
+      setMonthlyMode("same_date");
+      setMonthlyOrdinal(1);
+      setMonthlyWeekday(getWeekdayFromIsoDate(nextDueDate));
     }
+  }
+
+  function handleWeeklyDayToggle(day: TaskRecurrenceWeekday) {
+    setWeeklyDays((current) => current.includes(day)
+      ? current.filter((entry) => entry !== day)
+      : [...current, day].sort(
+          (left, right) => WEEKDAY_PICKER_ORDER.indexOf(left) - WEEKDAY_PICKER_ORDER.indexOf(right),
+        ));
+  }
+
+  function buildRecurrenceRule(): TaskCustomRecurrenceRule | null {
+    if (recurrenceType === "daily") {
+      return null;
+    }
+
+    if (recurrenceType === "weekly") {
+      return weeklyDays.length > 0
+        ? { interval: 1, unit: "week", weekdays: weeklyDays }
+        : null;
+    }
+
+    if (recurrenceType === "monthly") {
+      return monthlyMode === "nth_weekday"
+        ? {
+            interval: 1,
+            unit: "month",
+            monthlyPattern: {
+              kind: "nth_weekday",
+              ordinal: monthlyOrdinal,
+              weekday: monthlyWeekday,
+            },
+          }
+        : null;
+    }
+
+    const interval = Number(customInterval);
+    const rule: TaskCustomRecurrenceRule = {
+      interval,
+      unit: customUnit,
+    };
+
+    if (customUnit === "week" && weeklyDays.length > 0) {
+      rule.weekdays = weeklyDays;
+    }
+
+    if (customUnit === "month" && monthlyMode === "nth_weekday") {
+      rule.monthlyPattern = {
+        kind: "nth_weekday",
+        ordinal: monthlyOrdinal,
+        weekday: monthlyWeekday,
+      };
+    }
+
+    return rule;
   }
 
   function insertTemplateToken(token: string) {
@@ -157,6 +271,19 @@ export function RecurrenceSeriesModal({
       }
     }
 
+    const recurrenceRule = buildRecurrenceRule();
+    if (
+      recurrenceType !== "daily"
+      && recurrenceRule
+      && !doesIsoDateMatchTaskRecurrenceRule(nextDueDate, recurrenceType, recurrenceRule)
+    ) {
+      setError(
+        getTaskRecurrenceDateConstraintMessage("nextDueDate", recurrenceType, recurrenceRule)
+          ?? "Next due date must match the recurrence rule.",
+      );
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -168,10 +295,9 @@ export function RecurrenceSeriesModal({
         projectId: projectId || null,
         recurrenceType,
         recurrenceBehavior,
-        recurrenceRule: recurrenceType === "custom"
-          ? { interval: Number(customInterval), unit: customUnit }
-          : null,
+        recurrenceRule,
         nextDueDate,
+        dueTime: dueTime || null,
       };
 
       if (isEditing) {
@@ -246,6 +372,12 @@ export function RecurrenceSeriesModal({
   const previewReferenceDate = nextDueDate || new Date().toISOString();
   const renderedTitlePreview = renderTemplate(title, { referenceDate: previewReferenceDate });
   const renderedDescriptionPreview = renderTemplate(description, { referenceDate: previewReferenceDate });
+  const showWeeklyPattern = recurrenceType === "weekly" || (recurrenceType === "custom" && customUnit === "week");
+  const showMonthlyPattern = recurrenceType === "monthly" || (recurrenceType === "custom" && customUnit === "month");
+  const monthlyModeOptions = [
+    { value: "same_date", label: "Same Date", dot: "bg-blue-500" },
+    { value: "nth_weekday", label: "Nth Weekday", dot: "bg-amber-500" },
+  ];
 
   if (!mounted) return null;
 
@@ -378,7 +510,7 @@ export function RecurrenceSeriesModal({
             onChange={(value) => setRecurrenceBehavior(value as TaskRecurrenceBehavior)}
           />
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Instances are materialized at midnight on the due date.
+            Instances are materialized on {formatDueDateTime("the due date", dueTime || null) ?? "the due date"}.
           </p>
           {recurrenceType === "custom" && (
             <div className="grid grid-cols-[0.6fr_1fr] gap-3">
@@ -404,9 +536,49 @@ export function RecurrenceSeriesModal({
               />
             </div>
           )}
+          {showWeeklyPattern && (
+            <div className="space-y-2">
+              <WeekdayPicker selectedDays={weeklyDays} onToggle={handleWeeklyDayToggle} />
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {weeklyDays.length > 0
+                  ? "Only the selected weekdays will be scheduled."
+                  : "No specific weekdays selected. The schedule follows the weekday of the next due date."}
+              </p>
+            </div>
+          )}
+          {showMonthlyPattern && (
+            <div className="space-y-3">
+              <PillGroup
+                label="Monthly Pattern"
+                value={monthlyMode}
+                options={monthlyModeOptions}
+                onChange={(value) => setMonthlyMode(value as MonthlyMode)}
+              />
+              {monthlyMode === "nth_weekday" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <CustomSelect
+                    label="Occurrence"
+                    value={String(monthlyOrdinal)}
+                    onChange={(value: string) => setMonthlyOrdinal(Number(value) as TaskRecurrenceMonthlyOrdinal)}
+                    options={MONTHLY_ORDINAL_OPTIONS}
+                  />
+                  <CustomSelect
+                    label="Weekday"
+                    value={monthlyWeekday}
+                    onChange={(value: string) => setMonthlyWeekday(value as TaskRecurrenceWeekday)}
+                    options={WEEKDAY_SELECT_OPTIONS}
+                  />
+                </div>
+              ) : (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Uses the calendar date from the next due date and repeats on that same date each month.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 items-end">
+        <div className="grid grid-cols-1 gap-4 items-end sm:grid-cols-2">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
               Next Due Date
@@ -415,6 +587,17 @@ export function RecurrenceSeriesModal({
               type="date"
               value={nextDueDate}
               onChange={(e) => setNextDueDate(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+              Due Time
+            </label>
+            <input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
               className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none transition-colors"
             />
           </div>
@@ -496,6 +679,42 @@ function PillGroup({
             >
               {option.dot && <span className={`h-2.5 w-2.5 rounded-full ${option.dot}`} />}
               <span>{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WeekdayPicker({
+  selectedDays,
+  onToggle,
+}: {
+  selectedDays: TaskRecurrenceWeekday[];
+  onToggle: (day: TaskRecurrenceWeekday) => void;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+        Repeat On
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {WEEKDAY_PICKER_ORDER.map((weekday) => {
+          const active = selectedDays.includes(weekday);
+          return (
+            <button
+              key={weekday}
+              type="button"
+              onClick={() => onToggle(weekday)}
+              aria-pressed={active}
+              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                active
+                  ? "border-neutral-900 bg-neutral-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-neutral-900"
+                  : "border-neutral-200 bg-white/80 text-neutral-600 hover:text-neutral-900 hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:text-white dark:hover:border-neutral-500"
+              }`}
+            >
+              {TASK_RECURRENCE_WEEKDAY_LABELS[weekday]}
             </button>
           );
         })}

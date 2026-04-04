@@ -1,15 +1,17 @@
 import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import {
+  doesIsoDateMatchTaskRecurrenceRule,
+  getTaskRecurrenceDateConstraintMessage,
   isTaskRecurrenceBehavior,
   isTaskRecurrenceType,
-  parseTaskCustomRecurrenceRule,
-  serializeTaskCustomRecurrenceRule,
   type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
+  validateTaskRecurrenceRule,
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
+import { isValidDueTime } from "@/lib/due-time";
 import { db } from "@/db";
 import { tasks, projects } from "@/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
@@ -95,6 +97,7 @@ export const POST = withAuth(async (req, session) => {
     status,
     priority,
     dueDate,
+    dueTime,
     projectId,
     recurrenceType,
     recurrenceBehavior,
@@ -133,6 +136,14 @@ export const POST = withAuth(async (req, session) => {
     return errorResponse("dueDate must be a string (ISO date)", 400);
   }
 
+  if (dueTime !== undefined && dueTime !== null && typeof dueTime !== "string") {
+    return errorResponse("dueTime must be a string (HH:MM) or null", 400);
+  }
+
+  if (typeof dueTime === "string" && !isValidDueTime(dueTime)) {
+    return errorResponse("dueTime must be a valid 24-hour time in HH:MM format", 400);
+  }
+
   if (projectId !== undefined && projectId !== null && typeof projectId !== "string") {
     return errorResponse("projectId must be a string or null", 400);
   }
@@ -152,20 +163,11 @@ export const POST = withAuth(async (req, session) => {
   const resolvedRecurrenceBehavior = resolvedRecurrenceType === "none"
     ? "after_completion"
     : (recurrenceBehavior as TaskRecurrenceBehavior | undefined) ?? "after_completion";
-  let resolvedRecurrenceRule: string | null = null;
-
-  if (resolvedRecurrenceType === "custom") {
-    const parsedRule = parseTaskCustomRecurrenceRule(recurrenceRule);
-    if (!parsedRule) {
-      return errorResponse(
-        "recurrenceRule is required for custom recurrence and must include interval (1-365) and unit (day|week|month)",
-        400,
-      );
-    }
-    resolvedRecurrenceRule = serializeTaskCustomRecurrenceRule(parsedRule);
-  } else if (recurrenceRule !== undefined && recurrenceRule !== null) {
-    return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
+  const recurrenceValidation = validateTaskRecurrenceRule(resolvedRecurrenceType, recurrenceRule);
+  if (recurrenceValidation.error) {
+    return errorResponse(recurrenceValidation.error, 400);
   }
+  const resolvedRecurrenceRule = recurrenceValidation.storedRule;
 
   if (
     resolvedRecurrenceType !== "none"
@@ -174,6 +176,23 @@ export const POST = withAuth(async (req, session) => {
   ) {
     return errorResponse(
       "dueDate is required when recurrenceBehavior is duplicate_on_schedule",
+      400,
+    );
+  }
+
+  if (typeof dueTime === "string" && (!dueDate || typeof dueDate !== "string" || dueDate.trim().length === 0)) {
+    return errorResponse("dueDate is required when dueTime is set", 400);
+  }
+
+  if (
+    resolvedRecurrenceType !== "none"
+    && typeof dueDate === "string"
+    && dueDate.trim().length > 0
+    && !doesIsoDateMatchTaskRecurrenceRule(dueDate, resolvedRecurrenceType, recurrenceValidation.parsedRule)
+  ) {
+    return errorResponse(
+      getTaskRecurrenceDateConstraintMessage("dueDate", resolvedRecurrenceType, recurrenceValidation.parsedRule)
+        ?? "dueDate does not match the recurrence rule",
       400,
     );
   }
@@ -204,6 +223,7 @@ export const POST = withAuth(async (req, session) => {
       status: (status as typeof VALID_STATUSES[number]) ?? "open",
       priority: (priority as typeof VALID_PRIORITIES[number]) ?? "medium",
       dueDate: dueDate as string | undefined,
+      dueTime: dueTime as string | null | undefined,
       recurrenceType: resolvedRecurrenceType,
       recurrenceBehavior: resolvedRecurrenceBehavior,
       recurrenceRule: resolvedRecurrenceRule,

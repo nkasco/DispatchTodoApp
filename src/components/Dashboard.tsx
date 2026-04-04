@@ -26,6 +26,7 @@ import {
   IconSearch,
 } from "@/components/icons";
 import { renderTemplate } from "@/lib/templates";
+import { compareDueDateTime, formatDueDateTime } from "@/lib/due-time";
 
 const STATUS_BADGES: Record<TaskStatus, string> = {
   open: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
@@ -83,7 +84,13 @@ type WidgetData = {
   recentNoteActivity: ActivityItem[];
 };
 
-export function Dashboard({ userName }: { userName: string }) {
+export function Dashboard({
+  userName,
+  dashboardDueTimesEnabled = false,
+}: {
+  userName: string;
+  dashboardDueTimesEnabled?: boolean;
+}) {
   const { data: session } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -146,7 +153,7 @@ export function Dashboard({ userName }: { userName: string }) {
 
   const upcoming = tasks
     .filter((task) => task.dueDate && task.dueDate > today && task.status !== "done")
-    .sort((a, b) => a.dueDate!.localeCompare(b.dueDate!))
+    .sort((a, b) => compareDueDateTime(a.dueDate, a.dueTime, b.dueDate, b.dueTime))
     .slice(0, 4);
 
   const weekStart = new Date();
@@ -330,7 +337,11 @@ export function Dashboard({ userName }: { userName: string }) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
           {visibleWidgets.map((widget) => (
             <div key={widget.id} className={`${WIDGET_SPAN_CLASSES[widget.id]} h-full`}>
-              <DashboardWidget widgetId={widget.id} data={widgetData} />
+              <DashboardWidget
+                widgetId={widget.id}
+                data={widgetData}
+                dashboardDueTimesEnabled={dashboardDueTimesEnabled}
+              />
             </div>
           ))}
         </div>
@@ -341,9 +352,11 @@ export function Dashboard({ userName }: { userName: string }) {
 function DashboardWidget({
   widgetId,
   data,
+  dashboardDueTimesEnabled,
 }: {
   widgetId: DashboardWidgetId;
   data: WidgetData;
+  dashboardDueTimesEnabled: boolean;
 }) {
   switch (widgetId) {
     case "hero-stats":
@@ -536,7 +549,9 @@ function DashboardWidget({
                         {item.status.replace("_", " ")}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{new Date(item.updatedAt).toLocaleString()}</p>
+                    <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                      {formatDashboardTimestamp(item.updatedAt)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -558,7 +573,12 @@ function DashboardWidget({
           ) : (
             <div className="space-y-2">
               {data.upcoming.map((task, index) => (
-                <DueItem key={task.id} task={task} index={index} />
+                <DueItem
+                  key={task.id}
+                  task={task}
+                  index={index}
+                  showDueTimes={dashboardDueTimesEnabled}
+                />
               ))}
             </div>
           )}
@@ -572,8 +592,16 @@ function DashboardWidget({
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Task and note updates across your workspace.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ActivityCard title="Task Activity" emptyMessage="No task updates yet." items={data.recentTaskActivity} />
-            <ActivityCard title="Note Activity" emptyMessage="No note updates yet." items={data.recentNoteActivity} />
+            <ActivityCard
+              title="Task Activity"
+              emptyMessage="No task updates yet."
+              items={data.recentTaskActivity}
+            />
+            <ActivityCard
+              title="Note Activity"
+              emptyMessage="No note updates yet."
+              items={data.recentNoteActivity}
+            />
           </div>
         </section>
       );
@@ -623,7 +651,7 @@ function ActivityCard({
                       <span className="font-medium">{label}:</span> {item.title}
                     </p>
                     <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
-                      {new Date(item.date).toLocaleString()}
+                      {formatDashboardTimestamp(item.date)}
                     </p>
                   </div>
                 </div>
@@ -634,6 +662,15 @@ function ActivityCard({
       )}
     </div>
   );
+}
+
+export function formatDashboardTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }
 
 function FocusRing({
@@ -699,8 +736,19 @@ function StatPill({
   );
 }
 
-function DueItem({ task, index }: { task: Task; index: number }) {
+function DueItem({
+  task,
+  index,
+  showDueTimes,
+}: {
+  task: Task;
+  index: number;
+  showDueTimes: boolean;
+}) {
   const renderedTitle = renderTemplate(task.title, { referenceDate: task.dueDate ?? task.createdAt });
+  const dueLabel = showDueTimes
+    ? (formatDueDateTime(task.dueDate, task.dueTime) ?? task.dueDate)
+    : task.dueDate;
 
   return (
     <div
@@ -712,7 +760,7 @@ function DueItem({ task, index }: { task: Task; index: number }) {
         <span className="h-2.5 w-2.5 rounded-full bg-cyan-500" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">{renderedTitle}</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">Due {task.dueDate}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Due {dueLabel}</p>
         </div>
       </div>
     </div>

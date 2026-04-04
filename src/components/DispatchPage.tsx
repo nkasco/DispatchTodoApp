@@ -23,6 +23,7 @@ import {
   IconSearch,
 } from "@/components/icons";
 import { addDaysToIsoDate, formatIsoDateForDisplay, getIsoDateForTimeZone } from "@/lib/timezone";
+import { formatDueDateTime } from "@/lib/due-time";
 
 const STATUS_STYLES: Record<TaskStatus, { dot: string; label: string; ring: string }> = {
   open: { dot: "bg-blue-500", label: "Open", ring: "text-blue-500" },
@@ -748,7 +749,9 @@ export function DispatchPage() {
                         {renderTemplate(task.title, { referenceDate: task.dueDate ?? task.createdAt })}
                       </span>
                       {task.dueDate && (
-                        <span className="text-xs text-neutral-400 dark:text-neutral-500">{task.dueDate}</span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                          {formatDueDateTime(task.dueDate, task.dueTime) ?? task.dueDate}
+                        </span>
                       )}
                       <IconPlus className="w-3.5 h-3.5 text-neutral-400" />
                     </button>
@@ -916,7 +919,7 @@ function LinkedTaskRow({
 
       {task.dueDate && (
         <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
-          {task.dueDate}
+          {formatDueDateTime(task.dueDate, task.dueTime) ?? task.dueDate}
         </span>
       )}
 

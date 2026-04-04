@@ -25,7 +25,8 @@ export function createTestDb() {
       "timeZone" text,
       "templatePresets" text,
       "showAdminQuickAccess" integer NOT NULL DEFAULT 1,
-      "assistantEnabled" integer NOT NULL DEFAULT 1
+      "assistantEnabled" integer NOT NULL DEFAULT 1,
+      "dashboardDueTimesEnabled" integer NOT NULL DEFAULT 0
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS "user_email_unique" ON "user" ("email");
@@ -75,6 +76,7 @@ export function createTestDb() {
       "status" text NOT NULL DEFAULT 'open',
       "priority" text NOT NULL DEFAULT 'medium',
       "dueDate" text,
+      "dueTime" text,
       "recurrenceType" text NOT NULL DEFAULT 'none',
       "recurrenceBehavior" text NOT NULL DEFAULT 'after_completion',
       "recurrenceRule" text,
@@ -102,6 +104,7 @@ export function createTestDb() {
       "recurrenceBehavior" text NOT NULL DEFAULT 'after_completion',
       "recurrenceRule" text,
       "nextDueDate" text NOT NULL,
+      "dueTime" text,
       "active" integer NOT NULL DEFAULT 1,
       "deletedAt" text,
       "createdAt" text NOT NULL DEFAULT (current_timestamp),

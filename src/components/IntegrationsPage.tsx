@@ -10,7 +10,7 @@ const ACTIVE_API_KEY_STORAGE_KEY = "dispatch.active-api-key-id";
 
 type Endpoint = {
   id: string;
-  category: "tasks" | "projects" | "notes" | "dispatches";
+  category: "tasks" | "projects" | "notes" | "dispatches" | "recurrences";
   method: Method;
   path: string;
   summary: string;
@@ -39,6 +39,11 @@ const ENDPOINTS: Endpoint[] = [
   { id: "dispatches-create", category: "dispatches", method: "POST", path: "/api/dispatches", summary: "Create dispatch", body: `{ "date": "2026-02-07", "summary": "Plan work" }`, response: `{ "id": "disp_1", "date": "2026-02-07" }` },
   { id: "dispatches-complete", category: "dispatches", method: "POST", path: "/api/dispatches/{id}/complete", summary: "Complete dispatch", params: ["id"], response: `{ "rolledOver": 2, "nextDispatchId": "disp_2" }` },
   { id: "dispatches-unfinalize", category: "dispatches", method: "POST", path: "/api/dispatches/{id}/unfinalize", summary: "Unfinalize dispatch", params: ["id"], response: `{ "hasNextDispatch": true }` },
+
+  { id: "recurrences-list", category: "recurrences", method: "GET", path: "/api/recurrences", summary: "List recurring series", response: `[{ "id": "series_1", "title": "Daily review", "nextDueDate": "2026-02-07", "dueTime": "09:00" }]` },
+  { id: "recurrences-create", category: "recurrences", method: "POST", path: "/api/recurrences", summary: "Create recurring series", body: `{ "title": "Morning review", "description": "Check inbox and triage tasks", "recurrenceType": "daily", "nextDueDate": "2026-02-07", "dueTime": "09:00" }`, response: `{ "id": "series_1", "title": "Morning review", "dueTime": "09:00" }` },
+  { id: "recurrences-update", category: "recurrences", method: "PUT", path: "/api/recurrences/{id}", summary: "Update recurring series", params: ["id"], body: `{ "description": "Check inbox, triage, and plan", "dueTime": "09:30" }`, response: `{ "id": "series_1", "description": "Check inbox, triage, and plan", "dueTime": "09:30" }` },
+  { id: "recurrences-delete", category: "recurrences", method: "DELETE", path: "/api/recurrences/{id}", summary: "Delete recurring series", params: ["id"], response: `{ "deleted": true }` },
 ];
 
 const CATEGORY_LABELS: Record<Endpoint["category"], string> = {
@@ -46,6 +51,7 @@ const CATEGORY_LABELS: Record<Endpoint["category"], string> = {
   projects: "Projects",
   notes: "Notes",
   dispatches: "Dispatches",
+  recurrences: "Recurring",
 };
 
 const METHOD_STYLES: Record<Method, string> = {

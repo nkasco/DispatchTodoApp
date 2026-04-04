@@ -5,22 +5,38 @@ import { db } from "@/db";
 import { projects, recurrenceSeries, tasks } from "@/db/schema";
 import { requireUserId, textResult } from "@/mcp-server/tools/context";
 import {
+  doesIsoDateMatchTaskRecurrenceRule,
+  getTaskRecurrenceDateConstraintMessage,
   getNextTaskRecurrenceDate,
-  parseTaskCustomRecurrenceRule,
-  serializeTaskCustomRecurrenceRule,
+  validateTaskRecurrenceRule,
 } from "@/lib/task-recurrence";
 import { getTodayIsoDate } from "@/lib/task-recurrence-rollover";
 import { syncRecurrenceSeriesForUser } from "@/lib/recurrence-series-sync";
+import { isValidDueTime } from "@/lib/due-time";
 
 const TASK_STATUS = ["open", "in_progress", "done"] as const;
 const TASK_PRIORITY = ["low", "medium", "high"] as const;
 const TASK_RECURRENCE = ["none", "daily", "weekly", "monthly", "custom"] as const;
 const TASK_RECURRENCE_BEHAVIOR = ["after_completion", "duplicate_on_schedule"] as const;
 const TASK_CUSTOM_RECURRENCE_UNIT = ["day", "week", "month"] as const;
+const TASK_RECURRENCE_WEEKDAY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const TASK_RECURRENCE_MONTHLY_ORDINAL = [1, 2, 3, 4, -1] as const;
 
 const customRecurrenceRuleSchema = z.object({
   interval: z.number().int().min(1).max(365),
   unit: z.enum(TASK_CUSTOM_RECURRENCE_UNIT),
+  weekdays: z.array(z.enum(TASK_RECURRENCE_WEEKDAY)).min(1).optional(),
+  monthlyPattern: z.object({
+    kind: z.literal("nth_weekday"),
+    ordinal: z.union(TASK_RECURRENCE_MONTHLY_ORDINAL.map((ordinal) => z.literal(ordinal)) as [
+      z.ZodLiteral<1>,
+      z.ZodLiteral<2>,
+      z.ZodLiteral<3>,
+      z.ZodLiteral<4>,
+      z.ZodLiteral<-1>,
+    ]),
+    weekday: z.enum(TASK_RECURRENCE_WEEKDAY),
+  }).optional(),
 });
 
 export function registerTaskTools(server: McpServer) {
@@ -65,6 +81,7 @@ export function registerTaskTools(server: McpServer) {
         status: z.enum(TASK_STATUS).optional(),
         priority: z.enum(TASK_PRIORITY).optional(),
         dueDate: z.string().optional(),
+        dueTime: z.string().optional(),
         projectId: z.string().nullable().optional(),
         recurrenceType: z.enum(TASK_RECURRENCE).optional(),
         recurrenceBehavior: z.enum(TASK_RECURRENCE_BEHAVIOR).optional(),
@@ -73,6 +90,9 @@ export function registerTaskTools(server: McpServer) {
     },
     async (args, extra) => {
       const userId = requireUserId(extra);
+      if (args.dueTime !== undefined && !isValidDueTime(args.dueTime)) {
+        throw new Error("dueTime must be a valid 24-hour time in HH:MM format.");
+      }
       if (args.projectId) {
         const [project] = await db
           .select({ id: projects.id })
@@ -92,18 +112,11 @@ export function registerTaskTools(server: McpServer) {
       const recurrenceBehavior = recurrenceType === "none"
         ? "after_completion"
         : args.recurrenceBehavior ?? "after_completion";
-      let recurrenceRule: string | null = null;
-      if (recurrenceType === "custom") {
-        const parsed = parseTaskCustomRecurrenceRule(args.recurrenceRule);
-        if (!parsed) {
-          throw new Error(
-            "Custom recurrence requires recurrenceRule with interval (1-365) and unit (day|week|month).",
-          );
-        }
-        recurrenceRule = serializeTaskCustomRecurrenceRule(parsed);
-      } else if (args.recurrenceRule !== undefined && args.recurrenceRule !== null) {
-        throw new Error("recurrenceRule can only be set when recurrenceType is custom.");
+      const recurrenceValidation = validateTaskRecurrenceRule(recurrenceType, args.recurrenceRule);
+      if (recurrenceValidation.error) {
+        throw new Error(recurrenceValidation.error);
       }
+      const recurrenceRule = recurrenceValidation.storedRule;
 
       if (
         recurrenceType !== "none"
@@ -111,6 +124,21 @@ export function registerTaskTools(server: McpServer) {
         && (!args.dueDate || args.dueDate.trim().length === 0)
       ) {
         throw new Error("dueDate is required when recurrenceBehavior is duplicate_on_schedule.");
+      }
+
+      if (args.dueTime !== undefined && (!args.dueDate || args.dueDate.trim().length === 0)) {
+        throw new Error("dueDate is required when dueTime is set.");
+      }
+
+      if (
+        recurrenceType !== "none"
+        && args.dueDate
+        && !doesIsoDateMatchTaskRecurrenceRule(args.dueDate, recurrenceType, recurrenceValidation.parsedRule)
+      ) {
+        throw new Error(
+          getTaskRecurrenceDateConstraintMessage("dueDate", recurrenceType, recurrenceValidation.parsedRule)
+            ?? "dueDate does not match the recurrence rule.",
+        );
       }
 
       const now = new Date().toISOString();
@@ -123,6 +151,7 @@ export function registerTaskTools(server: McpServer) {
           status: args.status ?? "open",
           priority: args.priority ?? "medium",
           dueDate: args.dueDate,
+          dueTime: args.dueTime,
           projectId: args.projectId ?? null,
           recurrenceType,
           recurrenceBehavior,
@@ -147,6 +176,7 @@ export function registerTaskTools(server: McpServer) {
         status: z.enum(TASK_STATUS).optional(),
         priority: z.enum(TASK_PRIORITY).optional(),
         dueDate: z.string().nullable().optional(),
+        dueTime: z.string().nullable().optional(),
         projectId: z.string().nullable().optional(),
         recurrenceType: z.enum(TASK_RECURRENCE).optional(),
         recurrenceBehavior: z.enum(TASK_RECURRENCE_BEHAVIOR).optional(),
@@ -165,6 +195,7 @@ export function registerTaskTools(server: McpServer) {
           priority: tasks.priority,
           projectId: tasks.projectId,
           dueDate: tasks.dueDate,
+          dueTime: tasks.dueTime,
           recurrenceType: tasks.recurrenceType,
           recurrenceBehavior: tasks.recurrenceBehavior,
           recurrenceRule: tasks.recurrenceRule,
@@ -176,6 +207,10 @@ export function registerTaskTools(server: McpServer) {
         .limit(1);
 
       if (!existing) throw new Error("Task not found.");
+
+      if (args.dueTime !== undefined && args.dueTime !== null && !isValidDueTime(args.dueTime)) {
+        throw new Error("dueTime must be a valid 24-hour time in HH:MM format.");
+      }
 
       if (args.projectId) {
         const [project] = await db
@@ -201,38 +236,40 @@ export function registerTaskTools(server: McpServer) {
       let nextRecurrenceBehavior = hasRecurrenceBehavior
         ? args.recurrenceBehavior!
         : existing.recurrenceBehavior;
-      let nextRecurrenceRule = existing.recurrenceRule;
+      const isDueDateBeingCleared = args.dueDate !== undefined
+        && (args.dueDate === null || (typeof args.dueDate === "string" && args.dueDate.trim().length === 0));
       const nextDueDate = args.dueDate !== undefined ? args.dueDate : existing.dueDate;
-
-      if (hasRecurrenceRule) {
-        if (args.recurrenceRule === null) {
-          nextRecurrenceRule = null;
-        } else {
-          const parsed = parseTaskCustomRecurrenceRule(args.recurrenceRule);
-          if (!parsed) {
-            throw new Error("recurrenceRule must include interval (1-365) and unit (day|week|month).");
-          }
-          nextRecurrenceRule = serializeTaskCustomRecurrenceRule(parsed);
-        }
+      const nextDueTime = args.dueTime !== undefined
+        ? args.dueTime
+        : (isDueDateBeingCleared ? null : existing.dueTime);
+      const rawNextRecurrenceRule = hasRecurrenceRule
+        ? args.recurrenceRule
+        : (hasRecurrenceType && args.recurrenceType !== existing.recurrenceType ? null : existing.recurrenceRule);
+      const recurrenceValidation = validateTaskRecurrenceRule(nextRecurrenceType, rawNextRecurrenceRule);
+      if (recurrenceValidation.error) {
+        throw new Error(recurrenceValidation.error);
       }
-
-      if (nextRecurrenceType === "custom") {
-        if (!nextRecurrenceRule) {
-          throw new Error("recurrenceRule is required when recurrenceType is custom.");
-        }
-      } else {
-        if (hasRecurrenceRule && args.recurrenceRule !== null && args.recurrenceRule !== undefined) {
-          throw new Error("recurrenceRule can only be set when recurrenceType is custom.");
-        }
-        if (hasRecurrenceType) {
-          nextRecurrenceRule = null;
-        }
-      }
+      const nextRecurrenceRule = recurrenceValidation.storedRule;
 
       if (nextRecurrenceType === "none") {
         nextRecurrenceBehavior = "after_completion";
       } else if (nextRecurrenceBehavior === "duplicate_on_schedule" && !nextDueDate) {
         throw new Error("dueDate is required when recurrenceBehavior is duplicate_on_schedule.");
+      }
+
+      if (nextDueTime && !nextDueDate) {
+        throw new Error("dueDate is required when dueTime is set.");
+      }
+
+      if (
+        nextRecurrenceType !== "none"
+        && nextDueDate
+        && !doesIsoDateMatchTaskRecurrenceRule(nextDueDate, nextRecurrenceType, recurrenceValidation.parsedRule)
+      ) {
+        throw new Error(
+          getTaskRecurrenceDateConstraintMessage("dueDate", nextRecurrenceType, recurrenceValidation.parsedRule)
+            ?? "dueDate does not match the recurrence rule.",
+        );
       }
 
       const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
@@ -241,6 +278,7 @@ export function registerTaskTools(server: McpServer) {
       if (args.status !== undefined) updates.status = args.status;
       if (args.priority !== undefined) updates.priority = args.priority;
       if (args.dueDate !== undefined) updates.dueDate = args.dueDate;
+      if (args.dueTime !== undefined || isDueDateBeingCleared) updates.dueTime = nextDueTime;
       if (args.projectId !== undefined) updates.projectId = args.projectId;
       if (hasRecurrenceType) updates.recurrenceType = nextRecurrenceType;
       if (hasRecurrenceBehavior || hasRecurrenceType) {

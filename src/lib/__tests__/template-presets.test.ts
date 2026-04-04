@@ -63,6 +63,34 @@ describe("template presets", () => {
     });
   });
 
+  it("preserves advanced weekly recurrence rules on task templates", () => {
+    const payload = {
+      tasks: [
+        {
+          id: "task-template-2",
+          name: "Gym",
+          title: "Gym",
+          description: "",
+          recurrenceType: "weekly",
+          recurrenceBehavior: "after_completion",
+          recurrenceRule: {
+            interval: 1,
+            unit: "week",
+            weekdays: ["mon", "fri"],
+          },
+        },
+      ],
+      notes: [],
+      dispatches: [],
+    };
+
+    expect(validateTemplatePresetsInput(payload).tasks[0].recurrenceRule).toBe(JSON.stringify({
+      interval: 1,
+      unit: "week",
+      weekdays: ["mon", "fri"],
+    }));
+  });
+
   it("defaults recurrenceBehavior for legacy task templates", () => {
     const payload = {
       tasks: [

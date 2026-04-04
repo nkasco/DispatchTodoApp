@@ -16,6 +16,7 @@ import {
   IconClock,
 } from "@/components/icons";
 import { PROJECT_COLORS } from "@/lib/projects";
+import { formatDueDateTime } from "@/lib/due-time";
 
 const STATUS_BADGES: Record<TaskStatus, string> = {
   open: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
@@ -576,7 +577,7 @@ export function ProjectsPage() {
                             )}
                             {task.dueDate && (
                               <span className="text-xs text-neutral-400 dark:text-neutral-500">
-                                {task.dueDate}
+                                {formatDueDateTime(task.dueDate, task.dueTime) ?? task.dueDate}
                               </span>
                             )}
                             <div className="ml-auto flex items-center gap-1 sm:ml-0">

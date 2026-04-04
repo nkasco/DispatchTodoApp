@@ -100,6 +100,7 @@ describe("Tasks API", () => {
           status: "in_progress",
           priority: "high",
           dueDate: "2025-12-31",
+          dueTime: "09:30",
         }),
         {}
       );
@@ -110,6 +111,7 @@ describe("Tasks API", () => {
       expect(data.status).toBe("in_progress");
       expect(data.priority).toBe("high");
       expect(data.dueDate).toBe("2025-12-31");
+      expect(data.dueTime).toBe("09:30");
     });
 
     it("creates a recurring task with built-in recurrence", async () => {
@@ -141,6 +143,26 @@ describe("Tasks API", () => {
       expect(data.recurrenceType).toBe("custom");
       expect(data.recurrenceBehavior).toBe("after_completion");
       expect(JSON.parse(data.recurrenceRule)).toEqual({ interval: 2, unit: "week" });
+    });
+
+    it("creates a weekly recurring task with selected weekdays", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Gym schedule",
+          dueDate: "2026-04-03",
+          recurrenceType: "weekly",
+          recurrenceRule: { interval: 1, unit: "week", weekdays: ["mon", "wed", "fri"] },
+        }),
+        {},
+      );
+
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(JSON.parse(data.recurrenceRule)).toEqual({
+        interval: 1,
+        unit: "week",
+        weekdays: ["mon", "wed", "fri"],
+      });
     });
 
     it("trims whitespace from title", async () => {
@@ -233,7 +255,18 @@ describe("Tasks API", () => {
       expect(res.status).toBe(400);
     });
 
-    it("rejects recurrenceRule for non-custom recurrence", async () => {
+    it("requires dueDate when dueTime is provided", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Timed task",
+          dueTime: "08:15",
+        }),
+        {},
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects recurrenceRule for daily recurrence", async () => {
       const res = await POST(
         jsonReq("http://localhost/api/tasks", "POST", {
           title: "test",
@@ -242,6 +275,34 @@ describe("Tasks API", () => {
         }),
         {}
       );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects dueDate values that do not match selected weekdays", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Gym schedule",
+          dueDate: "2026-04-04",
+          recurrenceType: "weekly",
+          recurrenceRule: { interval: 1, unit: "week", weekdays: ["mon", "wed", "fri"] },
+        }),
+        {},
+      );
+
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects malformed weekly recurrenceRule payloads", async () => {
+      const res = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Gym schedule",
+          dueDate: "2026-04-03",
+          recurrenceType: "weekly",
+          recurrenceRule: { interval: 0, unit: "week", weekdays: ["mon", "wed", "fri"] },
+        }),
+        {},
+      );
+
       expect(res.status).toBe(400);
     });
 
@@ -557,6 +618,30 @@ describe("Tasks API", () => {
       expect(data.title).toBe("Original");
       expect(data.description).toBe("Keep me");
       expect(data.status).toBe("done");
+    });
+
+    it("allows clearing dueDate without explicitly clearing an existing dueTime", async () => {
+      const createRes = await POST(
+        jsonReq("http://localhost/api/tasks", "POST", {
+          title: "Scheduled task",
+          dueDate: "2026-04-10",
+          dueTime: "08:15",
+        }),
+        {},
+      );
+      const created = await createRes.json();
+
+      const res = await PUT(
+        jsonReq(`http://localhost/api/tasks/${created.id}`, "PUT", {
+          dueDate: null,
+        }),
+        ctx(created.id),
+      );
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.dueDate).toBeNull();
+      expect(data.dueTime).toBeNull();
     });
 
     it("returns 404 for nonexistent task", async () => {

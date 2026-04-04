@@ -37,6 +37,7 @@ describe("ensureSchemaColumns", () => {
     const columns = columnNames(sqlite, "user");
     expect(columns).toContain("timeZone");
     expect(columns).toContain("templatePresets");
+    expect(columns).toContain("dashboardDueTimesEnabled");
   });
 
   it("adds missing task recurrence columns", () => {
@@ -55,6 +56,7 @@ describe("ensureSchemaColumns", () => {
     expect(columns).toContain("recurrenceBehavior");
     expect(columns).toContain("recurrenceSeriesId");
     expect(columns).toContain("recurrenceProcessedAt");
+    expect(columns).toContain("dueTime");
   });
 
   it("creates recurrence series table when missing", () => {
@@ -73,6 +75,22 @@ describe("ensureSchemaColumns", () => {
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recurrence_series' LIMIT 1",
     ).get() as { name: string } | undefined;
     expect(tables?.name).toBe("recurrence_series");
+    expect(columnNames(sqlite, "recurrence_series")).toContain("dueTime");
+  });
+
+  it("does not create recurrence series table before base tables exist", () => {
+    const sqlite = createSqlite(`
+      CREATE TABLE "__drizzle_migrations" (
+        "id" integer PRIMARY KEY NOT NULL
+      );
+    `);
+
+    ensureSchemaColumns(sqlite);
+
+    const tables = sqlite.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recurrence_series' LIMIT 1",
+    ).get() as { name: string } | undefined;
+    expect(tables).toBeUndefined();
   });
 
   it("adds missing security setting columns used by admin routes", () => {

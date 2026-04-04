@@ -3,12 +3,14 @@ import { withAuth, jsonResponse, errorResponse } from "@/lib/api";
 import { db } from "@/db";
 import { projects, recurrenceSeries } from "@/db/schema";
 import {
+  doesIsoDateMatchTaskRecurrenceRule,
+  getTaskRecurrenceDateConstraintMessage,
   isTaskRecurrenceBehavior,
-  parseTaskCustomRecurrenceRule,
-  serializeTaskCustomRecurrenceRule,
   type TaskRecurrenceBehavior,
   type TaskRecurrenceType,
+  validateTaskRecurrenceRule,
 } from "@/lib/task-recurrence";
+import { isValidDueTime } from "@/lib/due-time";
 
 const VALID_PRIORITIES = ["low", "medium", "high"] as const;
 const VALID_SERIES_TYPES = ["daily", "weekly", "monthly", "custom"] as const;
@@ -42,6 +44,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
     recurrenceBehavior,
     recurrenceRule,
     nextDueDate,
+    dueTime,
     active,
   } = body as Record<string, unknown>;
 
@@ -78,6 +81,12 @@ export const PUT = withAuth(async (req, session, ctx) => {
   if (typeof nextDueDate === "string" && !isIsoDate(nextDueDate)) {
     return errorResponse("nextDueDate must be a YYYY-MM-DD date", 400);
   }
+  if (dueTime !== undefined && dueTime !== null && typeof dueTime !== "string") {
+    return errorResponse("dueTime must be a string (HH:MM) or null", 400);
+  }
+  if (typeof dueTime === "string" && !isValidDueTime(dueTime)) {
+    return errorResponse("dueTime must be a valid 24-hour time in HH:MM format", 400);
+  }
   if (active !== undefined && typeof active !== "boolean") {
     return errorResponse("active must be a boolean", 400);
   }
@@ -110,31 +119,22 @@ export const PUT = withAuth(async (req, session, ctx) => {
   const nextType = hasRecurrenceType
     ? recurrenceType as Exclude<TaskRecurrenceType, "none">
     : existing.recurrenceType;
-  let nextRule = existing.recurrenceRule;
-
-  if (hasRecurrenceRule) {
-    if (recurrenceRule === null) {
-      nextRule = null;
-    } else {
-      const parsed = parseTaskCustomRecurrenceRule(recurrenceRule);
-      if (!parsed) {
-        return errorResponse(
-          "recurrenceRule must include interval (1-365) and unit (day|week|month)",
-          400,
-        );
-      }
-      nextRule = serializeTaskCustomRecurrenceRule(parsed);
-    }
+  const rawNextRule = hasRecurrenceRule
+    ? recurrenceRule
+    : (hasRecurrenceType && recurrenceType !== existing.recurrenceType ? null : existing.recurrenceRule);
+  const recurrenceValidation = validateTaskRecurrenceRule(nextType, rawNextRule);
+  if (recurrenceValidation.error) {
+    return errorResponse(recurrenceValidation.error, 400);
   }
+  const nextRule = recurrenceValidation.storedRule;
 
-  if (nextType === "custom") {
-    if (!nextRule) {
-      return errorResponse("recurrenceRule is required when recurrenceType is custom", 400);
-    }
-  } else if (hasRecurrenceRule && recurrenceRule !== null && recurrenceRule !== undefined) {
-    return errorResponse("recurrenceRule can only be set when recurrenceType is custom", 400);
-  } else if (hasRecurrenceType) {
-    nextRule = null;
+  const nextNextDueDate = nextDueDate !== undefined ? nextDueDate as string : existing.nextDueDate;
+  if (!doesIsoDateMatchTaskRecurrenceRule(nextNextDueDate, nextType, recurrenceValidation.parsedRule)) {
+    return errorResponse(
+      getTaskRecurrenceDateConstraintMessage("nextDueDate", nextType, recurrenceValidation.parsedRule)
+        ?? "nextDueDate does not match the recurrence rule",
+      400,
+    );
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
@@ -146,6 +146,7 @@ export const PUT = withAuth(async (req, session, ctx) => {
   if (recurrenceBehavior !== undefined) updates.recurrenceBehavior = recurrenceBehavior as TaskRecurrenceBehavior;
   if (hasRecurrenceRule || hasRecurrenceType) updates.recurrenceRule = nextRule;
   if (nextDueDate !== undefined) updates.nextDueDate = nextDueDate;
+  if (dueTime !== undefined) updates.dueTime = dueTime;
   if (active !== undefined) updates.active = active;
 
   const [updated] = await db

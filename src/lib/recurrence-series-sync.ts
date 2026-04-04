@@ -10,6 +10,7 @@ type SeriesRow = {
   title: string;
   description: string | null;
   priority: "low" | "medium" | "high";
+  dueTime: string | null;
   recurrenceType: "daily" | "weekly" | "monthly" | "custom";
   recurrenceBehavior: "after_completion" | "duplicate_on_schedule";
   recurrenceRule: string | null;
@@ -31,6 +32,7 @@ async function migrateLegacyTaskRecurrencesForUser(userId: string, todayIsoDate:
       status: tasks.status,
       priority: tasks.priority,
       dueDate: tasks.dueDate,
+      dueTime: tasks.dueTime,
       recurrenceType: tasks.recurrenceType,
       recurrenceBehavior: tasks.recurrenceBehavior,
       recurrenceRule: tasks.recurrenceRule,
@@ -71,6 +73,7 @@ async function migrateLegacyTaskRecurrencesForUser(userId: string, todayIsoDate:
         title: row.title,
         description: row.description,
         priority: row.priority,
+        dueTime: row.dueTime,
         recurrenceType: row.recurrenceType,
         recurrenceBehavior: row.recurrenceBehavior,
         recurrenceRule: row.recurrenceRule,
@@ -141,6 +144,7 @@ async function materializeSeries(series: SeriesRow, dueDate: string) {
     status: "open",
     priority: series.priority,
     dueDate,
+    dueTime: series.dueTime,
     recurrenceType: "none",
     recurrenceBehavior: "after_completion",
     recurrenceRule: null,
@@ -162,6 +166,7 @@ export async function syncRecurrenceSeriesForUser(userId: string, todayIsoDate: 
       title: recurrenceSeries.title,
       description: recurrenceSeries.description,
       priority: recurrenceSeries.priority,
+      dueTime: recurrenceSeries.dueTime,
       recurrenceType: recurrenceSeries.recurrenceType,
       recurrenceBehavior: recurrenceSeries.recurrenceBehavior,
       recurrenceRule: recurrenceSeries.recurrenceRule,

@@ -17,6 +17,7 @@ import { IconCheckCircle, IconPlus, IconPencil, IconTrash } from "@/components/i
 import { PROJECT_COLORS } from "@/lib/projects";
 import { renderTemplate } from "@/lib/templates";
 import { getTaskRecurrencePreview, RECURRENCE_BEHAVIOR_LABELS } from "@/lib/task-recurrence-preview";
+import { compareDueDateTime, formatDueDateTime } from "@/lib/due-time";
 
 type SortField = "createdAt" | "dueDate" | "priority";
 
@@ -203,10 +204,7 @@ export function TasksPage() {
 
   const sorted = [...filteredTasks].sort((a, b) => {
     if (sortBy === "dueDate") {
-      if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return a.dueDate.localeCompare(b.dueDate);
+      return compareDueDateTime(a.dueDate, a.dueTime, b.dueDate, b.dueTime);
     }
     if (sortBy === "priority") {
       return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
@@ -856,7 +854,7 @@ function TaskRow({
 
         {task.dueDate && (
           <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
-            {task.dueDate}
+            {formatDueDateTime(task.dueDate, task.dueTime) ?? task.dueDate}
           </span>
         )}
       </div>

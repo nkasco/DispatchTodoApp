@@ -44,7 +44,8 @@ npm run db:push      # Push schema to DB (dev shortcut)
 5. **Soft Deletes**: Tasks, notes, projects use `deletedAt` field. Never hard-delete these.
 6. **Task Completion**: Optimistic UI + undo toast (`toast.undo()`) pattern across all task pages.
 7. **Tests**: New API routes should have integration tests mocking `@/auth` and `@/db`.
-8. **Env Vars**: `.env.local` (gitignored) — `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`.
+8. **TDD by Default**: Prefer red/green TDD. Write or update the failing test first when feasible, then implement the code change, then rerun the focused tests before broader verification.
+9. **Env Vars**: `.env.local` (gitignored) — `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`.
 
 ## Files You Should Know
 

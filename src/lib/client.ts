@@ -5,13 +5,23 @@ export type TaskPriority = "low" | "medium" | "high";
 export type TaskRecurrenceType = "none" | "daily" | "weekly" | "monthly" | "custom";
 export type TaskRecurrenceBehavior = "after_completion" | "duplicate_on_schedule";
 export type TaskCustomRecurrenceUnit = "day" | "week" | "month";
+export type TaskRecurrenceWeekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
+export type TaskRecurrenceMonthlyOrdinal = 1 | 2 | 3 | 4 | -1;
 export type ProjectStatus = "active" | "paused" | "completed";
 export type UserRole = "member" | "admin";
 export type AIProvider = "openai" | "anthropic" | "google" | "ollama" | "lmstudio" | "custom";
 
+export interface TaskMonthlyWeekdayPattern {
+  kind: "nth_weekday";
+  ordinal: TaskRecurrenceMonthlyOrdinal;
+  weekday: TaskRecurrenceWeekday;
+}
+
 export interface TaskCustomRecurrenceRule {
   interval: number;
   unit: TaskCustomRecurrenceUnit;
+  weekdays?: TaskRecurrenceWeekday[];
+  monthlyPattern?: TaskMonthlyWeekdayPattern;
 }
 
 export interface TaskTemplatePreset {
@@ -67,6 +77,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string | null;
+  dueTime: string | null;
   recurrenceType: TaskRecurrenceType;
   recurrenceBehavior: TaskRecurrenceBehavior;
   recurrenceRule: string | null;
@@ -86,6 +97,7 @@ export interface RecurrenceSeries {
   recurrenceBehavior: TaskRecurrenceBehavior;
   recurrenceRule: string | null;
   nextDueDate: string;
+  dueTime: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -192,6 +204,7 @@ export interface AdminVersionStatus {
 interface MePreferences {
   showAdminQuickAccess?: boolean;
   assistantEnabled?: boolean;
+  dashboardDueTimesEnabled?: boolean;
   timeZone?: string | null;
   templatePresets?: TemplatePresets;
 }
@@ -199,6 +212,7 @@ interface MePreferences {
 export interface MePreferencesPayload {
   showAdminQuickAccess: boolean;
   assistantEnabled: boolean;
+  dashboardDueTimesEnabled: boolean;
   timeZone: string | null;
   templatePresets: TemplatePresets;
 }
@@ -387,6 +401,7 @@ export const api = {
       status?: TaskStatus;
       priority?: TaskPriority;
       dueDate?: string;
+      dueTime?: string;
       projectId?: string | null;
       recurrenceType?: TaskRecurrenceType;
       recurrenceBehavior?: TaskRecurrenceBehavior;
@@ -405,6 +420,7 @@ export const api = {
         status?: TaskStatus;
         priority?: TaskPriority;
         dueDate?: string | null;
+        dueTime?: string | null;
         projectId?: string | null;
         recurrenceType?: TaskRecurrenceType;
         recurrenceBehavior?: TaskRecurrenceBehavior;
@@ -435,6 +451,7 @@ export const api = {
       recurrenceBehavior?: TaskRecurrenceBehavior;
       recurrenceRule?: TaskCustomRecurrenceRule | null;
       nextDueDate: string;
+      dueTime?: string | null;
       active?: boolean;
     }) =>
       request<RecurrenceSeries>("/recurrences", { method: "POST", body: JSON.stringify(data) }),
@@ -450,6 +467,7 @@ export const api = {
         recurrenceBehavior?: TaskRecurrenceBehavior;
         recurrenceRule?: TaskCustomRecurrenceRule | null;
         nextDueDate?: string;
+        dueTime?: string | null;
         active?: boolean;
       },
     ) =>

@@ -1,11 +1,7 @@
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
 import { tasks, notes, dispatches, dispatchTasks, users, projects } from "./schema";
+import { db, sqlite } from "./index";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-
-const sqlite = new Database("./dispatch.db");
-const db = drizzle(sqlite);
 
 function todayStr(offset = 0) {
   const d = new Date();
